@@ -4,6 +4,7 @@ import org.scijava.ui.paramUI.Parameters.DoubleParam;
 import org.scijava.ui.paramUI.Parameters.EnumParam;
 import org.scijava.ui.paramUI.Parameters.IntParam;
 import org.scijava.ui.paramUI.Parameters.PathParam;
+import org.scijava.ui.paramUI.visitors.Maps;
 
 /**
  * Demo with a UI that would configure Cellpose 3.
@@ -51,6 +52,7 @@ public class Demo
 
 			// One or the other, but not both.
 			this.builtinOrCustom = addSelectableArguments()
+					.key( "BUILTIN_OR_CUSTOM" )
 					.add( builtinModel )
 					.add( customModel );
 
@@ -141,6 +143,10 @@ public class Demo
 		config.diameter.set( 40. );
 
 		System.out.println( config );
+
+		System.out.println();
+		System.out.println( "As a map:" );
+		Maps.toMap( config ).forEach( ( k, v ) -> System.out.println( " - " + k + " -> " + v ) );
 	}
 
 }
