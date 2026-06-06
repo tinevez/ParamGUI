@@ -49,10 +49,18 @@ import org.scijava.ui.paramUI.utils.StringUtils;
  *
  * @author Jean-Yves Tinevez
  */
-public abstract class Configurator
+public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 {
 
-	protected final List< Parameter< ?, ? > > arguments = new ArrayList<>();
+	protected final List< Parameter< ?, ? > > params = new ArrayList<>();
+
+	protected final List< ParameterGroup > groups = new ArrayList<>();
+
+	/**
+	 * Contains Parameters and ParameterGroups in the order they were added, for
+	 * UI display.
+	 */
+	final List< Object > orderedElements = new ArrayList<>();
 
 	protected final List< SelectableArguments > selectables = new ArrayList<>();
 
@@ -105,7 +113,7 @@ public abstract class Configurator
 	 */
 	public List< Parameter< ?, ? > > getArguments()
 	{
-		return Collections.unmodifiableList( arguments );
+		return Collections.unmodifiableList( params );
 	}
 
 	/**
@@ -128,7 +136,7 @@ public abstract class Configurator
 	 */
 	public List< Parameter< ?, ? > > getSelectedArguments()
 	{
-		final List< Parameter< ?, ? > > selectedArguments = new ArrayList<>( arguments );
+		final List< Parameter< ?, ? > > selectedArguments = new ArrayList<>( params );
 		for ( final SelectableArguments selectable : selectables )
 			selectable.filter( selectedArguments );
 		return selectedArguments;
@@ -256,38 +264,37 @@ public abstract class Configurator
 	 * ADDER CLASSES.
 	 */
 
+	/**
+	 * Base class for builders that can add arguments to this configurator.
+	 * 
+	 * @param <A>
+	 *            the type of argument this builder creates.
+	 * @param <T>
+	 *            the type of the builder, for fluent API.
+	 */
 	@SuppressWarnings( "unchecked" )
-	abstract class Adder< A extends Parameter< A, O >, T extends Adder< A, T, O >, O >
+	abstract class Adder< A, T extends Adder< A, T > >
 	{
+
+		protected String key;
 
 		protected String name;
 
 		protected String help;
 
-		protected String key;
-
-		protected boolean required;
-
-		protected String units;
-
-		protected O defaultValue;
-
-		protected String argument;
-
 		protected boolean visible = true; // by default
 
-		protected boolean inCLI = true; // by default
-
 		/**
-		 * Specifies the argument to use in the CLI.
+		 * Specifies the key to use to persist the value of this argument. If
+		 * <code>null</code>, the argument will not be persisted.
 		 *
-		 * @param argument
-		 *            the command line argument.
+		 * @param key
+		 *            the argument key.
 		 * @return this adder.
 		 */
-		public T argument( final String argument )
+		public T key( final String key )
 		{
-			this.argument = argument;
+			this.key = key;
 			return ( T ) this;
 		}
 
@@ -332,33 +339,32 @@ public abstract class Configurator
 		}
 
 		/**
-		 * Specifies the key to use to serialize this argument in TrackMate XML
-		 * file. If <code>null</code>, the argument will not be serialized.
+		 * Returns the argument created by this builder.
 		 *
-		 * @param key
-		 *            the argument key.
-		 * @return this adder.
+		 * @return the argument.
 		 */
-		public T key( final String key )
-		{
-			this.key = key;
-			return ( T ) this;
-		}
+		public abstract A get();
 
-		/**
-		 * Specifies whether this argument is required in the CLI. If
-		 * <code>true</code>, if not set and if there are no default value, an
-		 * error will be thrown.
-		 *
-		 * @param required
-		 *            whether this argument is required.
-		 * @return this adder.
-		 */
-		public T required( final boolean required )
-		{
-			this.required = required;
-			return ( T ) this;
-		}
+	}
+
+	/**
+	 * Base class for builders that can add arguments to this configurator.
+	 * 
+	 * @param <A>
+	 *            the type of argument this builder creates.
+	 * @param <T>
+	 *            the type of the builder, for fluent API.
+	 * @param <O>
+	 *            the type of value the argument created by this builder
+	 *            accepts.
+	 */
+	@SuppressWarnings( "unchecked" )
+	abstract class ParamAdder< A extends Parameter< A, O >, T extends ParamAdder< A, T, O >, O > extends Adder< A, T >
+	{
+
+		protected String units;
+
+		protected O defaultValue;
 
 		/**
 		 * Specifies units for values accepted by this argument.
@@ -386,30 +392,10 @@ public abstract class Configurator
 			this.defaultValue = defaultValue;
 			return ( T ) this;
 		}
-
-		/**
-		 * Specifies whether this argument will appear in the command line.
-		 *
-		 * @param inCLI
-		 *            appears in the command line.
-		 * @return this adder.
-		 */
-		public T inCLI( final boolean inCLI )
-		{
-			this.inCLI = inCLI;
-			return ( T ) this;
-		}
-
-		/**
-		 * Returns the argument created by this builder.
-		 *
-		 * @return the argument.
-		 */
-		public abstract A get();
 	}
 
 	@SuppressWarnings( "unchecked" )
-	private abstract class BoundedAdder< A extends BoundedValueParameter< A, O >, T extends BoundedAdder< A, T, O >, O > extends Adder< A, T, O >
+	private abstract class BoundedAdder< A extends BoundedValueParameter< A, O >, T extends BoundedAdder< A, T, O >, O > extends ParamAdder< A, T, O >
 	{
 		protected O min;
 
@@ -458,7 +444,8 @@ public abstract class Configurator
 					.units( units )
 					.visible( visible )
 					.key( key );
-			Configurator.this.arguments.add( arg );
+			Configurator.this.params.add( arg );
+			Configurator.this.orderedElements.add( arg );
 			return arg;
 		}
 	}
@@ -481,12 +468,13 @@ public abstract class Configurator
 					.units( units )
 					.visible( visible )
 					.key( key );
-			Configurator.this.arguments.add( arg );
+			Configurator.this.params.add( arg );
+			Configurator.this.orderedElements.add( arg );
 			return arg;
 		}
 	}
 
-	protected class BooleanAdder extends Adder< BooleanParam, BooleanAdder, Boolean >
+	protected class BooleanAdder extends ParamAdder< BooleanParam, BooleanAdder, Boolean >
 	{
 
 		private BooleanAdder()
@@ -502,12 +490,13 @@ public abstract class Configurator
 					.units( units )
 					.visible( visible )
 					.key( key );
-			Configurator.this.arguments.add( arg );
+			Configurator.this.params.add( arg );
+			Configurator.this.orderedElements.add( arg );
 			return arg;
 		}
 	}
 
-	protected class StringAdder extends Adder< StringParam, StringAdder, String >
+	protected class StringAdder extends ParamAdder< StringParam, StringAdder, String >
 	{
 
 		private StringAdder()
@@ -523,12 +512,13 @@ public abstract class Configurator
 					.units( units )
 					.visible( visible )
 					.key( key );
-			Configurator.this.arguments.add( arg );
+			Configurator.this.params.add( arg );
+			Configurator.this.orderedElements.add( arg );
 			return arg;
 		}
 	}
 
-	protected class PathAdder extends Adder< PathParam, PathAdder, String >
+	protected class PathAdder extends ParamAdder< PathParam, PathAdder, String >
 	{
 
 		private PathAdder()
@@ -544,12 +534,13 @@ public abstract class Configurator
 					.units( units )
 					.visible( visible )
 					.key( key );
-			Configurator.this.arguments.add( arg );
+			Configurator.this.params.add( arg );
+			Configurator.this.orderedElements.add( arg );
 			return arg;
 		}
 	}
 
-	protected class ChoiceAdder extends Adder< ChoiceParam, ChoiceAdder, String >
+	protected class ChoiceAdder extends ParamAdder< ChoiceParam, ChoiceAdder, String >
 	{
 
 		private ChoiceAdder()
@@ -611,7 +602,7 @@ public abstract class Configurator
 		 *            the choices to add.
 		 * @return this adder.
 		 */
-		public Adder< ChoiceParam, ChoiceAdder, String > addChoiceAll( final Collection< String > c )
+		public ParamAdder< ChoiceParam, ChoiceAdder, String > addChoiceAll( final Collection< String > c )
 		{
 			for ( final String in : c )
 				addChoice( in );
@@ -671,12 +662,13 @@ public abstract class Configurator
 				arg.addChoice( choices.get( i ), mappeds.get( i ) );
 
 			arg.defaultValue( defaultValue );
-			Configurator.this.arguments.add( arg );
+			Configurator.this.orderedElements.add( arg );
+			Configurator.this.params.add( arg );
 			return arg;
 		}
 	}
 
-	protected class EnumAdder< E extends Enum< E > > extends Adder< EnumParam< E >, EnumAdder< E >, E >
+	protected class EnumAdder< E extends Enum< E > > extends ParamAdder< EnumParam< E >, EnumAdder< E >, E >
 	{
 
 		private final Class< E > enumClass;
@@ -696,8 +688,35 @@ public abstract class Configurator
 					.units( units )
 					.visible( visible )
 					.key( key );
-			Configurator.this.arguments.add( arg );
+			Configurator.this.params.add( arg );
+			Configurator.this.orderedElements.add( arg );
 			return arg;
+		}
+	}
+
+	protected class GroupAdder extends Adder< ParameterGroup, GroupAdder >
+	{
+
+		private List< Parameter< ?, ? > > params = new ArrayList<>();
+
+		public < T extends Parameter< T, O >, O > GroupAdder add( final T param )
+		{
+			params.add( param );
+			return this;
+		}
+
+		@Override
+		public ParameterGroup get()
+		{
+			final ParameterGroup group = new ParameterGroup()
+					.name( name )
+					.help( help )
+					.visible( visible );
+			for ( final Parameter< ?, ? > param : params )
+				group.add( param );
+			Configurator.this.groups.add( group );
+			Configurator.this.orderedElements.add( group );
+			return group;
 		}
 	}
 
@@ -804,8 +823,13 @@ public abstract class Configurator
 	 */
 	protected < T extends Parameter< ?, ? > > T addExtraArgument( final T extraArg )
 	{
-		this.arguments.add( extraArg );
+		this.params.add( extraArg );
 		return extraArg;
+	}
+
+	protected GroupAdder addGroup( final String name )
+	{
+		return new GroupAdder().name( name );
 	}
 
 	@Override
@@ -816,7 +840,23 @@ public abstract class Configurator
 		str.append( "-----------------------\n" );
 		str.append( help + "\n" );
 		str.append( "-----------------------\n" );
-		arguments.forEach( str::append );
+
+		final ConfiguratorIterator it = iterator();
+		while ( it.hasNext() )
+		{
+			final Parameter< ?, ? > param = it.next();
+			if (it.groupEntered())
+			{
+				str.append( "> -----------------------\n" );
+				str.append( "> " + it.getCurrentGroup() );
+				str.append( "> -----------------------\n" );
+			}
+			if (it.groupExited())
+			{
+				str.append( "> -----------------------\n" );
+			}
+			str.append( param );
+		}
 		return str.toString();
 	}
 
@@ -828,8 +868,8 @@ public abstract class Configurator
 	 * This can be used to translate the value of an argument into a more
 	 * user-friendly value, for instance to translate a radius into a diameter.
 	 * <p>
-	 * Warning: display translation is not supported for {@link BooleanParam} and
-	 * {@link ChoiceParam}.
+	 * Warning: display translation is not supported for {@link BooleanParam}
+	 * and {@link ChoiceParam}.
 	 *
 	 * @param arg
 	 *            the argument to decorate.
@@ -850,5 +890,11 @@ public abstract class Configurator
 
 		forwardUITranslators.put( arg, forward );
 		backwardUITranslators.put( arg, backward );
+	}
+
+	@Override
+	public ConfiguratorIterator iterator()
+	{
+		return new ConfiguratorIterator( this );
 	}
 }

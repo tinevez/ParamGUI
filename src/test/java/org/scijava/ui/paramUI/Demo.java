@@ -25,6 +25,12 @@ public class Demo
 
 		private IntParam chan2;
 
+		private DoubleParam flowThreshold;
+
+		private DoubleParam cellprobThreshold;
+
+		private IntParam minSize;
+
 		public Cellpose3Config()
 		{
 			super( "Cellpose 3", "https://imagej.net/plugins/cellpose-appose#usage" );
@@ -83,6 +89,44 @@ public class Demo
 					.get();
 
 			setDisplayTranslator( diameter, d -> d * pixelSize, d -> d / pixelSize );
+
+			/*
+			 * Advanced parameters.
+			 */
+
+			this.flowThreshold = addDoubleArgument()
+					.key( "FLOW_THRESHOLD" )
+					.name( "Flow threshold" )
+					.help( "<html>Threshold for flow error filtering. Lower = more masks (permissive), Higher = fewer masks (strict).</html>" )
+					.defaultValue( 0.4 )
+					.min( 0. )
+					.max( 3. )
+					.get();
+
+			this.cellprobThreshold = addDoubleArgument()
+					.key( "CELPROB_THRESHOLD" )
+					.name( "Cell probability threshold" )
+					.help( "<html>Threshold for cell probability. Increase to filter low-confidence detections.</html>" )
+					.defaultValue( 0.0 )
+					.min( -6. )
+					.max( 6. )
+					.get();
+
+			this.minSize = addIntArgument()
+					.key( "MIN_SIZE" )
+					.name( "Minimum size" )
+					.help( "Objects smaller than this are removed." )
+					.defaultValue( 15 )
+					.min( 0 )
+					.units( "pixels" )
+					.get();
+
+			addGroup( "Advanced parameters" )
+					.add( flowThreshold )
+					.add( cellprobThreshold )
+					.add( minSize )
+					.visible( false )
+					.get();
 		}
 	}
 
