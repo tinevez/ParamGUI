@@ -103,6 +103,16 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 * GETTERS
 	 */
 
+	public String getName()
+	{
+		return name;
+	}
+
+	public String getHelp()
+	{
+		return help;
+	}
+
 	/**
 	 * Returns the list of arguments (plus the command) in this CLI config. All
 	 * arguments are present, regardless of whether they are in
