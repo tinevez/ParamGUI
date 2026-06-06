@@ -61,9 +61,16 @@ public class Parameters
 			this.value = value;
 		}
 
+		/**
+		 * Returns the value of this argument, or the default value if no value
+		 * has been set.
+		 *
+		 * @return the value of this argument, or the default value if no value
+		 *         has been set.
+		 */
 		public O getValue()
 		{
-			return value;
+			return ( value == null ) ? defaultValue : value;
 		}
 
 		/**
