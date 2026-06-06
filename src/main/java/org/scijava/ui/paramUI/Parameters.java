@@ -145,17 +145,19 @@ public class Parameters
 		{
 			return getName()
 					+ " (" + this.getClass().getSimpleName() + ")\n"
-					+ " - key: " + getKey() + "\n"
 					+ ( ( getHelp() == null )
 							? " - no help\n"
 							: " - help: " + getHelp() + "\n" )
-					+ " - visible: " + isVisible() + "\n"
-					+ " - default value: " + getDefaultValue() + "\n"
+					+ " - key: " + getKey() + "\n"
+					+ " - value: " + getValue() + "\n"
 					+ ( ( getUnits() == null )
 							? ""
-							: " - units: " + getUnits() + "\n" );
+							: " - units: " + getUnits() + "\n" )
+					+ " - default value: " + getDefaultValue() + "\n"
+					+ " - visible: " + isVisible() + "\n";
 		}
 	}
+
 	public static class BooleanParam extends Parameter< BooleanParam, Boolean >
 	{
 		BooleanParam()
