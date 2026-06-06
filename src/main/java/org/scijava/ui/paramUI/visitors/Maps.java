@@ -38,4 +38,29 @@ public class Maps
 		}
 		return map;
 	}
+
+	public static final void fromMap( final Map< String, Object > settings, final Configurator config )
+	{
+		config.getArguments().forEach( arg -> fromMap( settings, arg ) );
+		config.getSelectables().forEach( selectable -> fromMap( settings, selectable ) );
+	}
+
+	private static < O > void fromMap( final Map< String, Object > settings, final Parameter< ?, O > param )
+	{
+		final String key = param.getKey();
+		final Object val = settings.get( key );
+		if ( val != null )
+		{
+			@SuppressWarnings( "unchecked" )
+			final O castVal = ( O ) val;
+			param.set( castVal );
+		}
+	}
+
+	private static void fromMap( final Map< String, Object > settings, final SelectableArguments selectable )
+	{
+		final Object val = settings.get( selectable.getKey() );
+		if ( val != null )
+			selectable.select( ( String ) val );
+	}
 }
