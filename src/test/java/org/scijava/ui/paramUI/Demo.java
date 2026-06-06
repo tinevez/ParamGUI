@@ -7,6 +7,7 @@ import org.scijava.ui.paramUI.Parameters.EnumParam;
 import org.scijava.ui.paramUI.Parameters.IntParam;
 import org.scijava.ui.paramUI.Parameters.PathParam;
 import org.scijava.ui.paramUI.visitors.Maps;
+import org.scijava.ui.paramUI.visitors.Strings;
 
 /**
  * Demo with a UI that would configure Cellpose 3.
@@ -170,7 +171,7 @@ public class Demo
 		System.out.println( "------------------------------" );
 		System.out.println( "After modifying the map" );
 		System.out.println( "------------------------------" );
-		System.out.println( config2 );
+		System.out.println( Strings.echo( config2 ) );
 		System.out.println( "------------------------------" );
 	}
 }
