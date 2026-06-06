@@ -1,5 +1,7 @@
 package org.scijava.ui.paramUI;
 
+import java.util.Map;
+
 import org.scijava.ui.paramUI.Parameters.DoubleParam;
 import org.scijava.ui.paramUI.Parameters.EnumParam;
 import org.scijava.ui.paramUI.Parameters.IntParam;
@@ -142,11 +144,33 @@ public class Demo
 		config.chan2.set( 1 );
 		config.diameter.set( 40. );
 
+		System.out.println( "------------------------------" );
+		System.out.println( "Original config" );
+		System.out.println( "------------------------------" );
 		System.out.println( config );
+		System.out.println( "------------------------------" );
 
 		System.out.println();
+		System.out.println( "------------------------------" );
 		System.out.println( "As a map:" );
-		Maps.toMap( config ).forEach( ( k, v ) -> System.out.println( " - " + k + " -> " + v ) );
-	}
+		System.out.println( "------------------------------" );
+		final Map< String, Object > map = Maps.toMap( config );
+		map.forEach( ( k, v ) -> System.out.println( " - " + k + " -> " + v ) );
+		System.out.println( "------------------------------" );
 
+		// Modify the map.
+		map.put( "CUSTOM_MODEL_PATH", "Trololo" );
+		map.put( "BUILTIN_OR_CUSTOM", "CUSTOM_MODEL_PATH" );
+		map.put( "CHAN2", 0 );
+
+		// Re-read the map into a new config.
+		final Cellpose3Config config2 = new Cellpose3Config();
+		Maps.fromMap( map, config2 );
+		System.out.println(  );
+		System.out.println( "------------------------------" );
+		System.out.println( "After modifying the map" );
+		System.out.println( "------------------------------" );
+		System.out.println( config2 );
+		System.out.println( "------------------------------" );
+	}
 }
