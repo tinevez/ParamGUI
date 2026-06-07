@@ -47,5 +47,4 @@ public interface ParameterVisitor
 	{
 		throw new UnsupportedOperationException();
 	}
-
 }
