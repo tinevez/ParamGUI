@@ -1,4 +1,4 @@
-package org.scijava.ui.paramUI.elements;
+package org.scijava.ui.paramUI.gui.elements;
 
 import java.awt.Color;
 import java.awt.Component;

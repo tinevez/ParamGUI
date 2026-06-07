@@ -19,7 +19,7 @@
  * <http://www.gnu.org/licenses/gpl-3.0.html>.
  * #L%
  */
-package org.scijava.ui.paramUI.elements.colormap;
+package org.scijava.ui.paramUI.gui.elements.colormap;
 
 import java.awt.Color;
 import java.io.Serializable;
