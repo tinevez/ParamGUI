@@ -5,6 +5,7 @@ import java.util.Map;
 
 import javax.swing.JFrame;
 
+import org.scijava.ui.paramUI.Parameters.BooleanParam;
 import org.scijava.ui.paramUI.Parameters.DoubleParam;
 import org.scijava.ui.paramUI.Parameters.EnumParam;
 import org.scijava.ui.paramUI.Parameters.IntParam;
@@ -39,6 +40,12 @@ public class Demo
 		private DoubleParam cellprobThreshold;
 
 		private IntParam minSize;
+
+		private BooleanParam exportROIs;
+
+		private BooleanParam exportLabels;
+
+		private BooleanParam exportFlows;
 
 		public Cellpose3Config( final Integer nChannels, final double pixelSize, final String units )
 		{
@@ -131,6 +138,35 @@ public class Demo
 					.add( cellprobThreshold )
 					.add( minSize )
 					.visible( false )
+					.get();
+
+			/*
+			 * Export group.
+			 */
+
+			this.exportROIs = addFlag()
+					.key( "EXPORT_ROIS" )
+					.name( "Export ROIs" )
+					.defaultValue( true )
+					.get();
+
+			this.exportLabels = addFlag()
+					.key( "EXPORT_LABELS" )
+					.name( "Export label image" )
+					.defaultValue( false )
+					.get();
+
+			this.exportFlows = addFlag()
+					.key( "EXPORT_FLOWS" )
+					.name( "Export flows" )
+					.defaultValue( false )
+					.get();
+
+			addGroup( "Export options" )
+					.add( exportROIs )
+					.add( exportLabels )
+					.add( exportFlows )
+					.visible( true )
 					.get();
 		}
 	}
