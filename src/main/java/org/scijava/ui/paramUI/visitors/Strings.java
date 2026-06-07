@@ -49,9 +49,11 @@ public class Strings
 		// Keep Parameter handles aligned with rows (same order)
 		final List< Parameter< ?, ? > > rowParams = new ArrayList<>();
 
-		// Map: parameter -> true if selected, false if in selectable but not
-		// selected
+		// Map: parameter -> true if selected, false if in selectable but not selected
 		final IdentityHashMap< Parameter< ?, ? >, Boolean > selectableState = new IdentityHashMap<>();
+
+		// Track whether a parameter appears in a group.
+		final IdentityHashMap< Parameter< ?, ? >, Boolean > appearsInGroup = new IdentityHashMap<>();
 
 		// Build selectable membership and selection state
 		for ( final var sel : config.getSelectables() )
@@ -84,6 +86,9 @@ public class Strings
 			rows.add( new String[] { currentGroupName, name, valueStr } );
 			rowParams.add( p );
 
+			if ( it.inGroup() )
+				appearsInGroup.put( p, Boolean.TRUE );
+
 			// If we just exited the group, clear context
 			if ( it.groupExited() )
 				currentGroupName = null;
@@ -95,7 +100,12 @@ public class Strings
 		{
 			final String[] row = rows.get( i );
 			final Parameter< ?, ? > p = rowParams.get( i );
-			final boolean inGroup = row[ 0 ] != null;
+
+			final boolean isStandalone = row[ 0 ] == null;
+			if ( isStandalone && appearsInGroup.containsKey( p ) )
+				continue;
+			final boolean inGroup = !isStandalone;
+
 			final boolean inSelectable = selectableState.containsKey( p );
 			final int boxLen = inSelectable ? 4 : 0; // "[x] " or "[ ] "
 			final int len = ( inGroup ? 2 : 0 ) + boxLen + ( row[ 1 ] != null ? row[ 1 ].length() : 0 );
@@ -105,15 +115,20 @@ public class Strings
 
 		// Compute widest value
 		int valueWidth = 0;
-		for ( final String[] row : rows )
+		for ( int i = 0; i < rows.size(); i++ )
 		{
+			final String[] row = rows.get( i );
+			final Parameter< ?, ? > p = rowParams.get( i );
+			final boolean isStandalone = row[ 0 ] == null;
+			if ( isStandalone && appearsInGroup.containsKey( p ) )
+				continue;
 			final String value = row[ 2 ] != null ? row[ 2 ] : "";
 			if ( value.length() > valueWidth )
 				valueWidth = value.length();
 		}
 
-		// Widest group header (ensure table is at least as wide as the longest
-		// group label)
+
+		// Widest group header (ensure table is at least as wide as the longest group label)
 		int groupHeaderWidth = 0;
 		final HashSet< String > groupsSeen = new HashSet<>( groupHeaders );
 		for ( final String g : groupsSeen )
@@ -143,6 +158,9 @@ public class Strings
 			final String[] row = rows.get( i );
 			final Parameter< ?, ? > p = rowParams.get( i );
 			final String rowGroup = row[ 0 ];
+			final boolean isStandalone = rowGroup == null;
+			if ( isStandalone && appearsInGroup.containsKey( p ) )
+				continue;
 			final boolean inGroup = rowGroup != null;
 
 			// Print group header when we encounter the first row of that group
