@@ -23,12 +23,15 @@ import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.DoubleSupplier;
 import java.util.function.Function;
@@ -52,6 +55,7 @@ import javax.swing.SwingConstants;
 
 import org.scijava.ui.paramUI.Configurator;
 import org.scijava.ui.paramUI.Configurator.SelectableParameters;
+import org.scijava.ui.paramUI.ConfiguratorIterator;
 import org.scijava.ui.paramUI.ParameterVisitor;
 import org.scijava.ui.paramUI.Parameters;
 import org.scijava.ui.paramUI.Parameters.BooleanParam;
@@ -72,6 +76,7 @@ import org.scijava.ui.paramUI.gui.elements.StyleElements.IntElement;
 import org.scijava.ui.paramUI.gui.elements.StyleElements.ListElement;
 import org.scijava.ui.paramUI.gui.elements.StyleElements.StringElement;
 import org.scijava.ui.paramUI.gui.elements.StyleElements.StyleElement;
+import org.scijava.ui.paramUI.utils.CollapsibleSection;
 import org.scijava.ui.paramUI.utils.FileChooser;
 import org.scijava.ui.paramUI.utils.FileChooser.DialogType;
 
@@ -91,6 +96,13 @@ public class GuiBuilder implements ParameterVisitor
 	private final Map< Parameter< ?, ? >, Function< ?, ? > > forwardUITranslators;
 
 	private final Map< Parameter< ?, ? >, Function< ?, ? > > backwardUITranslators;
+
+	// Foldable section routing
+	private boolean inGroup = false;
+
+	private JPanel groupBody = null; // where grouped rows are added
+
+	private GridBagConstraints gc = null; // constraints for the group body
 
 	private GuiBuilder( final Configurator config )
 	{
@@ -178,7 +190,7 @@ public class GuiBuilder implements ParameterVisitor
 			// JSpinner
 			final int tmin = arg.hasMin() ? arg.getMin() : Integer.MIN_VALUE;
 			final int tmax = arg.hasMax() ? arg.getMax() : Integer.MAX_VALUE;
-			final int min= forward.apply( tmin );
+			final int min = forward.apply( tmin );
 			final int max = forward.apply( tmax );
 			final IntElement element = intElement( arg.getName(), min, max, valueGetter, valueSetter );
 			comp = linkedSpinner( element );
@@ -330,11 +342,46 @@ public class GuiBuilder implements ParameterVisitor
 	}
 
 	/*
+	 * HELPER METHODS.
+	 */
+
+	private void startGroup( final String title, final boolean collapsed )
+	{
+		// Create a collapsible section with its own grid
+		final CollapsibleSection section = new CollapsibleSection( title, SMALL_FONT, collapsed );
+		// Add section (header + body) as a full-width component to the root
+		// panel
+		addToLayout( null, section );
+
+		// Prepare routing to the group body
+		inGroup = true;
+		groupBody = section.getBody();
+
+		gc = new GridBagConstraints();
+		gc.fill = GridBagConstraints.HORIZONTAL;
+		gc.gridwidth = 1;
+		gc.gridx = 0;
+		gc.gridy = 0;
+		gc.anchor = GridBagConstraints.LINE_START;
+		gc.insets = new Insets( 5, 0, 5, 0 );
+	}
+
+	private void endGroup()
+	{
+		inGroup = false;
+		groupBody = null;
+		gc = null;
+	}
+
+	/*
 	 * UI STUFF.
 	 */
 
 	private void addToLayoutTwoLines( final String help, final JLabel lbl, final JComponent comp, final Parameter< ?, ? > arg )
 	{
+		final JPanel target = inGroup ? groupBody : panel;
+		final GridBagConstraints CC = inGroup ? gc : c;
+
 		lbl.setText( lbl.getText() + " " );
 		lbl.setFont( SMALL_FONT );
 		comp.setFont( SMALL_FONT );
@@ -354,14 +401,14 @@ public class GuiBuilder implements ParameterVisitor
 		{
 			item = lbl;
 		}
-		c.insets = new Insets( 5, 0, 0, 0 );
-		c.gridwidth = 3;
-		panel.add( item, c );
-		c.gridy++;
-		c.anchor = GridBagConstraints.LINE_START;
-		c.insets = new Insets( 0, 0, 5, 0 );
-		panel.add( comp, c );
-		c.gridy++;
+		CC.insets = new Insets( 5, 0, 0, 0 );
+		CC.gridwidth = 3;
+		target.add( item, CC );
+		CC.gridy++;
+		CC.anchor = GridBagConstraints.LINE_START;
+		CC.insets = new Insets( 0, 0, 5, 0 );
+		target.add( comp, CC );
+		CC.gridy++;
 
 		if ( help != null )
 		{
@@ -372,6 +419,9 @@ public class GuiBuilder implements ParameterVisitor
 
 	private void addPathToLayout( final String help, final JLabel lbl, final JTextField tf, final Parameter< ?, ? > arg )
 	{
+		final JPanel target = inGroup ? groupBody : panel;
+		final GridBagConstraints CC = inGroup ? gc : c;
+
 		final JPanel p = new JPanel();
 		final BoxLayout bl = new BoxLayout( p, BoxLayout.LINE_AXIS );
 		p.setLayout( bl );
@@ -407,14 +457,14 @@ public class GuiBuilder implements ParameterVisitor
 		p.add( Box.createHorizontalGlue() );
 		p.add( browseButton );
 
-		c.insets = new Insets( topInset, 0, 0, 0 );
-		c.gridwidth = 3;
-		panel.add( p, c );
-		c.gridy++;
-		c.anchor = GridBagConstraints.LINE_START;
-		c.insets = new Insets( 0, 0, bottomInset, 0 );
-		panel.add( tf, c );
-		c.gridy++;
+		CC.insets = new Insets( topInset, 0, 0, 0 );
+		CC.gridwidth = 3;
+		target.add( p, CC );
+		CC.gridy++;
+		CC.anchor = GridBagConstraints.LINE_START;
+		CC.insets = new Insets( 0, 0, bottomInset, 0 );
+		target.add( tf, CC );
+		CC.gridy++;
 
 		if ( help != null )
 		{
@@ -422,10 +472,14 @@ public class GuiBuilder implements ParameterVisitor
 			tf.setToolTipText( help );
 			browseButton.setToolTipText( help );
 		}
+
 	}
 
 	private void addToLayout( final String help, final JLabel lbl, final JComponent comp, final Parameter< ?, ? > arg )
 	{
+		final JPanel target = inGroup ? groupBody : panel;
+		final GridBagConstraints CC = inGroup ? gc : c;
+
 		lbl.setText( lbl.getText() + " " );
 		lbl.setFont( SMALL_FONT );
 		lbl.setHorizontalAlignment( JLabel.RIGHT );
@@ -448,18 +502,18 @@ public class GuiBuilder implements ParameterVisitor
 			header = lbl;
 		}
 
-		c.gridwidth = 1;
-		c.anchor = GridBagConstraints.LINE_END;
-		panel.add( header, c );
+		CC.gridwidth = 1;
+		CC.anchor = GridBagConstraints.LINE_END;
+		target.add( header, CC );
 
-		c.gridx++;
-		c.gridwidth = 2;
-		c.anchor = GridBagConstraints.LINE_START;
-		panel.add( comp, c );
+		CC.gridx++;
+		CC.gridwidth = 2;
+		CC.anchor = GridBagConstraints.LINE_START;
+		target.add( comp, CC );
 
-		c.gridx = 0;
-		c.gridy++;
-		c.insets = new Insets( topInset, 0, bottomInset, 0 );
+		CC.gridx = 0;
+		CC.gridy++;
+		CC.insets = new Insets( topInset, 0, bottomInset, 0 );
 
 		if ( help != null )
 		{
@@ -470,6 +524,9 @@ public class GuiBuilder implements ParameterVisitor
 
 	private void addToLayout( final String help, final JLabel lbl, final JComponent comp, final String units, final Parameter< ?, ? > arg )
 	{
+		final JPanel target = inGroup ? groupBody : panel;
+		final GridBagConstraints CC = inGroup ? gc : c;
+
 		if ( units == null )
 		{
 			addToLayout( help, lbl, comp, arg );
@@ -497,22 +554,22 @@ public class GuiBuilder implements ParameterVisitor
 			header = lbl;
 		}
 
-		c.gridwidth = 1;
-		c.anchor = GridBagConstraints.LINE_END;
-		panel.add( header, c );
+		CC.gridwidth = 1;
+		CC.anchor = GridBagConstraints.LINE_END;
+		target.add( header, CC );
 
-		c.gridx++;
-		c.anchor = GridBagConstraints.LINE_START;
-		panel.add( comp, c );
+		CC.gridx++;
+		CC.anchor = GridBagConstraints.LINE_START;
+		target.add( comp, CC );
 
 		final JLabel lblUnits = new JLabel( " " + units );
 		lblUnits.setFont( SMALL_FONT );
-		c.gridx++;
-		c.insets = new Insets( topInset, 0, bottomInset, 0 );
-		panel.add( lblUnits, c );
+		CC.gridx++;
+		CC.insets = new Insets( topInset, 0, bottomInset, 0 );
+		target.add( lblUnits, CC );
 
-		c.gridx = 0;
-		c.gridy++;
+		CC.gridx = 0;
+		CC.gridy++;
 
 		if ( help != null )
 		{
@@ -524,6 +581,9 @@ public class GuiBuilder implements ParameterVisitor
 
 	private void addToLayout( final String help, final JComponent comp )
 	{
+		final JPanel target = inGroup ? groupBody : panel;
+		final GridBagConstraints CC = inGroup ? gc : c;
+
 		final JComponent header;
 		if ( panel.rdbtn != null )
 		{
@@ -540,14 +600,14 @@ public class GuiBuilder implements ParameterVisitor
 			header = comp;
 		}
 
-		c.gridx = 0;
-		c.gridwidth = 3;
-		c.fill = GridBagConstraints.HORIZONTAL;
-		c.insets = new Insets( topInset, 0, bottomInset, 0 );
-		panel.add( header, c );
+		CC.gridx = 0;
+		CC.gridwidth = 3;
+		CC.fill = GridBagConstraints.HORIZONTAL;
+		CC.insets = new Insets( topInset, 0, bottomInset, 0 );
+		target.add( header, CC );
 
-		c.gridx = 0;
-		c.gridy++;
+		CC.gridx = 0;
+		CC.gridy++;
 
 		if ( help != null )
 			comp.setToolTipText( help );
@@ -588,10 +648,6 @@ public class GuiBuilder implements ParameterVisitor
 
 	private static ConfigPanel build( final Configurator config, final GuiBuilder builder )
 	{
-		/*
-		 * Iterate over Parameters.
-		 */
-
 		// Map a selectable group to a button group in the GUI
 		final Map< Parameter< ?, ? >, JRadioButton > buttons = new HashMap<>();
 		for ( final SelectableParameters selectable : config.getSelectables() )
@@ -616,14 +672,48 @@ public class GuiBuilder implements ParameterVisitor
 			}
 		}
 
-		// Iterate over Parameters, taking care of selectable group.
-		for ( final Parameter< ?, ? > arg : config.getParameters() )
+		// Collect all parameters that appear inside any group (identity
+		// semantics)
+		final Set< Parameter< ?, ? > > paramsInAnyGroup = Collections.newSetFromMap( new IdentityHashMap<>() );
+		final ConfiguratorIterator probe = config.iterator();
+		while ( probe.hasNext() )
 		{
-			if ( !arg.isVisible() )
+			final Parameter< ?, ? > p = probe.next();
+			if ( probe.inGroup() )
+				paramsInAnyGroup.add( p );
+		}
+
+		// Iterate over Parameters, taking care of selectable group.
+		final ConfiguratorIterator it = config.iterator();
+		while ( it.hasNext() )
+		{
+			final Parameter< ?, ? > arg = it.next();
+
+			// Open a collapsible section if we just entered a group
+			if ( it.groupEntered() && it.getCurrentGroup() != null )
+				builder.startGroup( it.getCurrentGroup().getName(), it.getCurrentGroup().isVisible() );
+
+			// Skip standalone duplicates of grouped parameters
+			if ( !it.inGroup() && paramsInAnyGroup.contains( arg ) )
+			{
+				if ( it.groupExited() )
+					builder.endGroup(); // defensive: close if needed
 				continue;
+			}
+
+			if ( !arg.isVisible() )
+			{
+				if ( it.groupExited() )
+					builder.endGroup();
+				continue;
+			}
 
 			builder.setCurrentRadioButton( buttons.get( arg ) );
 			arg.accept( builder );
+
+			// Close the section if this was the group's last parameter
+			if ( it.groupExited() )
+				builder.endGroup();
 		}
 
 		/*
@@ -668,6 +758,10 @@ public class GuiBuilder implements ParameterVisitor
 		} );
 		return buttonGroup;
 	}
+
+	/*
+	 * INNER CLASSES.
+	 */
 
 	public class ConfigPanel extends JPanel
 	{
