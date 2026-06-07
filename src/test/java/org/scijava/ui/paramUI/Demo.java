@@ -21,7 +21,7 @@ public class Demo
 
 		private final PathParam customModel;
 
-		private final SelectableArguments builtinOrCustom;
+		private final SelectableParameters builtinOrCustom;
 
 		private final DoubleParam diameter;
 

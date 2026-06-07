@@ -56,7 +56,7 @@ public class Strings
 		// Build selectable membership and selection state
 		for ( final var sel : config.getSelectables() )
 		{
-			final List< Parameter< ?, ? > > opts = sel.getArguments();
+			final List< Parameter< ?, ? > > opts = sel.getParameters();
 			final Parameter< ?, ? > selected = sel.getSelection();
 			for ( final Parameter< ?, ? > opt : opts )
 				selectableState.put( opt, Boolean.valueOf( opt == selected ) );

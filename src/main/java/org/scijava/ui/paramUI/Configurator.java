@@ -62,7 +62,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 */
 	final List< Object > orderedElements = new ArrayList<>();
 
-	protected final List< SelectableArguments > selectables = new ArrayList<>();
+	protected final List< SelectableParameters > selectables = new ArrayList<>();
 
 	/**
 	 * The translators that will be applied to the value before displaying it in
@@ -116,7 +116,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	/**
 	 * Returns the list of arguments (plus the command) in this CLI config. All
 	 * arguments are present, regardless of whether they are in
-	 * {@link SelectableArguments}, {@link Parameter#visible} or not,
+	 * {@link SelectableParameters}, {@link Parameter#visible} or not,
 	 * {@link Parameter#inCLI} or not.
 	 *
 	 * @return the list of arguments.
@@ -127,11 +127,11 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/**
-	 * Returns the list of {@link SelectableArguments} in this CLI config.
+	 * Returns the list of {@link SelectableParameters} in this CLI config.
 	 *
-	 * @return the list of {@link SelectableArguments}.
+	 * @return the list of {@link SelectableParameters}.
 	 */
-	public List< SelectableArguments > getSelectables()
+	public List< SelectableParameters > getSelectables()
 	{
 		return Collections.unmodifiableList( selectables );
 	}
@@ -139,15 +139,15 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	/**
 	 * Returns the list of arguments set in this CLI config. The list contains
 	 * only the arguments that are selected if they are in a
-	 * {@link SelectableArguments}, and those who are not in a
-	 * {@link SelectableArguments}.
+	 * {@link SelectableParameters}, and those who are not in a
+	 * {@link SelectableParameters}.
 	 *
 	 * @return the selected arguments.
 	 */
 	public List< Parameter< ?, ? > > getSelectedArguments()
 	{
 		final List< Parameter< ?, ? > > selectedArguments = new ArrayList<>( params );
-		for ( final SelectableArguments selectable : selectables )
+		for ( final SelectableParameters selectable : selectables )
 			selectable.filter( selectedArguments );
 		return selectedArguments;
 	}
@@ -158,36 +158,36 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 
 	/**
 	 * Creates a 'one or the other' relationships. The arguments that will be
-	 * passed to the {@link SelectableArguments} will be flagged as as not to be
+	 * passed to the {@link SelectableParameters} will be flagged as as not to be
 	 * used concurrently in the same command. This will be used when creating
 	 * UIs.
 	 *
-	 * @return a new {@link SelectableArguments} instance.
+	 * @return a new {@link SelectableParameters} instance.
 	 */
-	protected SelectableArguments addSelectableArguments()
+	protected SelectableParameters addSelectableArguments()
 	{
-		final SelectableArguments sa = new SelectableArguments();
+		final SelectableParameters sa = new SelectableParameters();
 		selectables.add( sa );
 		return sa;
 	}
 
-	public static class SelectableArguments
+	public static class SelectableParameters
 	{
 
-		private final List< Parameter< ?, ? > > args = new ArrayList<>();
+		private final List< Parameter< ?, ? > > params = new ArrayList<>();
 
 		private String key;
 
 		private int selected = 0;
 
-		public SelectableArguments add( final Parameter< ?, ? > arg )
+		public SelectableParameters add( final Parameter< ?, ? > arg )
 		{
-			if ( !args.contains( arg ) )
-				args.add( arg );
+			if ( !params.contains( arg ) )
+				params.add( arg );
 			return this;
 		}
 
-		public SelectableArguments key( final String key )
+		public SelectableParameters key( final String key )
 		{
 			this.key = key;
 			return this;
@@ -198,12 +198,12 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 			return key;
 		}
 
-		private void filter( final List< Parameter< ?, ? > > arguments )
+		private void filter( final List< Parameter< ?, ? > > params )
 		{
 			final Set< Parameter< ?, ? > > toRemove = new HashSet<>();
-			for ( final Parameter< ?, ? > arg : arguments )
+			for ( final Parameter< ?, ? > arg : params )
 			{
-				if ( !args.contains( arg ) )
+				if ( !params.contains( arg ) )
 					continue; // Unknown of this selectable, keep it.
 
 				if ( arg.equals( getSelection() ) )
@@ -213,17 +213,17 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 				toRemove.add( arg );
 			}
 
-			arguments.removeAll( toRemove );
+			params.removeAll( toRemove );
 		}
 
 		public void select( final int selection )
 		{
-			this.selected = Math.max( 0, Math.min( args.size() - 1, selection ) );
+			this.selected = Math.max( 0, Math.min( params.size() - 1, selection ) );
 		}
 
 		public void select( final Parameter< ?, ? > arg )
 		{
-			final int sel = args.indexOf( arg );
+			final int sel = params.indexOf( arg );
 			if ( sel < 0 )
 			{
 				this.selected = 0;
@@ -234,9 +234,9 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 
 		public void select( final String key )
 		{
-			for ( int i = 0; i < args.size(); i++ )
+			for ( int i = 0; i < params.size(); i++ )
 			{
-				if ( key.equals( args.get( i ).getKey() ) )
+				if ( key.equals( params.get( i ).getKey() ) )
 				{
 					this.selected = i;
 					return;
@@ -247,7 +247,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 
 		public Parameter< ?, ? > getSelection()
 		{
-			return args.get( selected );
+			return params.get( selected );
 		}
 
 		public int getSelected()
@@ -258,11 +258,11 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		/**
 		 * Exposes all members of the selectable.
 		 *
-		 * @return the arguments in this selectable.
+		 * @return the parameters in this selectable.
 		 */
-		public List< Parameter< ?, ? > > getArguments()
+		public List< Parameter< ?, ? > > getParameters()
 		{
-			return args;
+			return params;
 		}
 	}
 

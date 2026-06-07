@@ -4,7 +4,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.scijava.ui.paramUI.Configurator;
-import org.scijava.ui.paramUI.Configurator.SelectableArguments;
+import org.scijava.ui.paramUI.Configurator.SelectableParameters;
 import org.scijava.ui.paramUI.Parameters.Parameter;
 
 public class Maps
@@ -29,7 +29,7 @@ public class Maps
 				continue; // skip parameters without keys
 			map.put( key, param.getValue() );
 		}
-		for ( final SelectableArguments selectable : config.getSelectables() )
+		for ( final SelectableParameters selectable : config.getSelectables() )
 		{
 			final String key = selectable.getKey();
 			if ( key == null )
@@ -57,7 +57,7 @@ public class Maps
 		}
 	}
 
-	private static void fromMap( final Map< String, Object > settings, final SelectableArguments selectable )
+	private static void fromMap( final Map< String, Object > settings, final SelectableParameters selectable )
 	{
 		final Object val = settings.get( selectable.getKey() );
 		if ( val != null )
