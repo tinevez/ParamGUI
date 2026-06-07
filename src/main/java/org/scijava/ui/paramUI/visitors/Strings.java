@@ -1,6 +1,8 @@
 package org.scijava.ui.paramUI.visitors;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.List;
 
 import org.scijava.ui.paramUI.Configurator;
@@ -12,7 +14,6 @@ import org.scijava.ui.paramUI.Parameters.Parameter;
  */
 public class Strings
 {
-
 
 	private static final String H = "─";
 
@@ -34,7 +35,7 @@ public class Strings
 
 	/**
 	 * Pretty-print the configuration as a table.
-	 * 
+	 *
 	 * @param config
 	 *            the configuration to print.
 	 * @return a string representation of the configuration.
@@ -44,6 +45,22 @@ public class Strings
 		// Collect rows so we can compute column widths first
 		final List< String[] > rows = new ArrayList<>();
 		final List< String > groupHeaders = new ArrayList<>();
+
+		// Keep Parameter handles aligned with rows (same order)
+		final List< Parameter< ?, ? > > rowParams = new ArrayList<>();
+
+		// Map: parameter -> true if selected, false if in selectable but not
+		// selected
+		final IdentityHashMap< Parameter< ?, ? >, Boolean > selectableState = new IdentityHashMap<>();
+
+		// Build selectable membership and selection state
+		for ( final var sel : config.getSelectables() )
+		{
+			final List< Parameter< ?, ? > > opts = sel.getArguments();
+			final Parameter< ?, ? > selected = sel.getSelection();
+			for ( final Parameter< ?, ? > opt : opts )
+				selectableState.put( opt, Boolean.valueOf( opt == selected ) );
+		}
 
 		final ConfiguratorIterator it = config.iterator();
 		String currentGroupName = null;
@@ -57,7 +74,6 @@ public class Strings
 			{
 				currentGroupName = it.getCurrentGroup().getName();
 				groupHeaders.add( currentGroupName );
-				// We'll add a virtual header row; actual printing later
 			}
 
 			final String name = p.getName();
@@ -66,20 +82,23 @@ public class Strings
 
 			// Store row with current group context (null means standalone)
 			rows.add( new String[] { currentGroupName, name, valueStr } );
+			rowParams.add( p );
 
 			// If we just exited the group, clear context
 			if ( it.groupExited() )
-			{
 				currentGroupName = null;
-			}
 		}
 
 		// Compute column width for the "name" column (with indentation when in a group)
 		int nameWidth = 0;
-		for ( final String[] row : rows )
+		for ( int i = 0; i < rows.size(); i++ )
 		{
+			final String[] row = rows.get( i );
+			final Parameter< ?, ? > p = rowParams.get( i );
 			final boolean inGroup = row[ 0 ] != null;
-			final int len = ( inGroup ? 2 : 0 ) + ( row[ 1 ] != null ? row[ 1 ].length() : 0 );
+			final boolean inSelectable = selectableState.containsKey( p );
+			final int boxLen = inSelectable ? 4 : 0; // "[x] " or "[ ] "
+			final int len = ( inGroup ? 2 : 0 ) + boxLen + ( row[ 1 ] != null ? row[ 1 ].length() : 0 );
 			if ( len > nameWidth )
 				nameWidth = len;
 		}
@@ -96,7 +115,7 @@ public class Strings
 		// Widest group header (ensure table is at least as wide as the longest
 		// group label)
 		int groupHeaderWidth = 0;
-		final java.util.HashSet< String > groupsSeen = new java.util.HashSet<>( groupHeaders );
+		final HashSet< String > groupsSeen = new HashSet<>( groupHeaders );
 		for ( final String g : groupsSeen )
 		{
 			if ( g != null )
@@ -113,12 +132,16 @@ public class Strings
 
 		// Build the table
 		final StringBuilder out = new StringBuilder();
-		out.append( TL ).append( dashLine ).append( TR + "\n" );
-		out.append( V ).append( center( title, innerWidth ) ).append( V + "\n" );
-		out.append( LH ).append( dashLine ).append( RH + "\n" );
+		out.append( TL ).append( dashLine ).append( TR ).append( "\n" );
+		out.append( V ).append( center( title, innerWidth ) ).append( V ).append( "\n" );
+		out.append( LH ).append( dashLine ).append( RH ).append( "\n" );
+
 		String printedGroup = null;
-		for ( final String[] row : rows )
+
+		for ( int i = 0; i < rows.size(); i++ )
 		{
+			final String[] row = rows.get( i );
+			final Parameter< ?, ? > p = rowParams.get( i );
 			final String rowGroup = row[ 0 ];
 			final boolean inGroup = rowGroup != null;
 
@@ -128,41 +151,36 @@ public class Strings
 				final String label = " " + rowGroup + " ";
 				final int before = Math.max( 0, ( innerWidth - label.length() ) / 2 );
 				final int after = Math.max( 0, innerWidth - label.length() - before );
-				out
-						.append( V )
-						.append( H.repeat( before ) )
-						.append( label )
-						.append( H.repeat( after ) )
+				out.append( V )
+						.append( H.repeat( before ) ).append( label ).append( H.repeat( after ) )
 						.append( V ).append( "\n" );
 				printedGroup = rowGroup;
 			}
 
-			// Leave group header area blank line after the last row is printed
-			// by detecting group transitions above.
-			// (Optional: you can add a separator when printedGroup changes to
-			// null.)
-
-			// Print row
+			// Row with optional checkbox
 			final String indent = inGroup ? "  " : "";
+			final boolean inSelectable = selectableState.containsKey( p );
+			final boolean isSelected = inSelectable && Boolean.TRUE.equals( selectableState.get( p ) );
+			final String box = inSelectable ? ( isSelected ? "[x] " : "[ ] " ) : "";
+
 			final String name = row[ 1 ] != null ? row[ 1 ] : "";
 			final String value = row[ 2 ] != null ? row[ 2 ] : "";
 
-			// Left-pad to align arrows
-			final int pad = nameWidth - ( indent.length() + name.length() );
+			// Left-pad to align the column separator
+			final int pad = nameWidth - ( indent.length() + box.length() + name.length() );
+
 			out.append( V );
-			out.append( indent ).append( name );
+			out.append( indent ).append( box ).append( name );
 			if ( pad > 0 )
 				out.append( " ".repeat( pad ) );
 			out.append( SEPARATOR ).append( value );
+
 			// pad to right edge
-			final int fill = innerWidth - ( indent.length() + name.length() + Math.max( 0, pad ) + SEPARATOR.length() + value.length() );
+			final int fill = innerWidth - ( indent.length() + box.length() + name.length()
+					+ Math.max( 0, pad ) + SEPARATOR.length() + value.length() );
 			if ( fill > 0 )
 				out.append( " ".repeat( fill ) );
-			out.append( V + "\n" );
-
-			// If we just left a group (next row belongs to a different group or
-			// no group), add a blank line
-			// This keeps things airy without being verbose
+			out.append( V ).append( "\n" );
 		}
 
 		out.append( BL ).append( dashLine ).append( BR );
@@ -182,9 +200,6 @@ public class Strings
 
 	private static String formatValue( final Object value )
 	{
-		if ( value == null )
-			return "null";
-
 		return String.valueOf( value );
 	}
 }
