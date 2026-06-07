@@ -40,7 +40,7 @@ public class Demo
 
 		private IntParam minSize;
 
-		public Cellpose3Config()
+		public Cellpose3Config( final Integer nChannels, final double pixelSize, final String units )
 		{
 			super( "Cellpose 3", "https://imagej.net/plugins/cellpose-appose#usage" );
 
@@ -65,8 +65,6 @@ public class Demo
 					.add( customModel );
 
 			// Channels, two int params.
-			final int nChannels = 3;
-
 			this.chan1 = addIntArgument()
 					.key( "CHAN1" )
 					.name( "Main channel" )
@@ -86,9 +84,6 @@ public class Demo
 
 			// Diameter param is in pixel, but we want to display it in physical
 			// units. So we set a translator that converts between the two.
-
-			final double pixelSize = 0.2;
-			final String units = "µm";
 
 			this.diameter = addDoubleArgument()
 					.key( "DIAMETER" )
@@ -142,7 +137,11 @@ public class Demo
 
 	public static void main( final String[] args )
 	{
-		final Cellpose3Config config = new Cellpose3Config();
+		final int nChannels = 3;
+		final double pixelSize = 0.2;
+		final String units = "µm";
+
+		final Cellpose3Config config = new Cellpose3Config( nChannels, pixelSize, units );
 
 		config.builtinModel.set( Cellpose3BuiltinModels.CYTO3 );
 		config.builtinOrCustom.select( config.builtinModel );
@@ -170,7 +169,7 @@ public class Demo
 		map.put( "CHAN2", 0 );
 
 		// Re-read the map into a new config.
-		final Cellpose3Config config2 = new Cellpose3Config();
+		final Cellpose3Config config2 = new Cellpose3Config( nChannels, pixelSize, units );
 		Maps.fromMap( map, config2 );
 		System.out.println(  );
 		System.out.println( "------------------------------" );
