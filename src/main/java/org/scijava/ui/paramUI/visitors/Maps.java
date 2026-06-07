@@ -41,7 +41,7 @@ public class Maps
 
 	public static final void fromMap( final Map< String, Object > settings, final Configurator config )
 	{
-		config.getArguments().forEach( arg -> fromMap( settings, arg ) );
+		config.getParameters().forEach( arg -> fromMap( settings, arg ) );
 		config.getSelectables().forEach( selectable -> fromMap( settings, selectable ) );
 	}
 

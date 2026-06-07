@@ -1,24 +1,3 @@
-/*-
- * #%L
- * TrackMate: your buddy for everyday tracking.
- * %%
- * Copyright (C) 2010 - 2026 TrackMate developers.
- * %%
- * This program is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as
- * published by the Free Software Foundation, either version 3 of the
- * License, or (at your option) any later version.
- * 
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- * 
- * You should have received a copy of the GNU General Public
- * License along with this program.  If not, see
- * <http://www.gnu.org/licenses/gpl-3.0.html>.
- * #L%
- */
 package org.scijava.ui.paramUI;
 
 import java.util.ArrayList;
@@ -114,20 +93,19 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/**
-	 * Returns the list of arguments (plus the command) in this CLI config. All
-	 * arguments are present, regardless of whether they are in
-	 * {@link SelectableParameters}, {@link Parameter#visible} or not,
-	 * {@link Parameter#inCLI} or not.
+	 * Returns the list of parameters (plus the command) in this config. All
+	 * parameters are present, regardless of whether they are in
+	 * {@link SelectableParameters}, {@link Parameter#visible} or not.
 	 *
-	 * @return the list of arguments.
+	 * @return the list of parameters.
 	 */
-	public List< Parameter< ?, ? > > getArguments()
+	public List< Parameter< ?, ? > > getParameters()
 	{
 		return Collections.unmodifiableList( params );
 	}
 
 	/**
-	 * Returns the list of {@link SelectableParameters} in this CLI config.
+	 * Returns the list of {@link SelectableParameters} in this config.
 	 *
 	 * @return the list of {@link SelectableParameters}.
 	 */
@@ -137,19 +115,35 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/**
-	 * Returns the list of arguments set in this CLI config. The list contains
-	 * only the arguments that are selected if they are in a
+	 * Returns the list of parameters set in this config. The list contains only
+	 * the parameters that are selected if they are in a
 	 * {@link SelectableParameters}, and those who are not in a
 	 * {@link SelectableParameters}.
 	 *
-	 * @return the selected arguments.
+	 * @return the selected parameters.
 	 */
-	public List< Parameter< ?, ? > > getSelectedArguments()
+	public List< Parameter< ?, ? > > getSelectedParameters()
 	{
-		final List< Parameter< ?, ? > > selectedArguments = new ArrayList<>( params );
+		final List< Parameter< ?, ? > > selectedParams = new ArrayList<>( params );
 		for ( final SelectableParameters selectable : selectables )
-			selectable.filter( selectedArguments );
-		return selectedArguments;
+			selectable.filter( selectedParams );
+		return selectedParams;
+	}
+
+	/**
+	 * Returns the map of translators that will be applied to the value before
+	 * displaying it in the UI.
+	 * 
+	 * @return the map of forward translators.
+	 */
+	public Map< Parameter< ?, ? >, Function< ?, ? > > getForwardUITranslators()
+	{
+		return Collections.unmodifiableMap( forwardUITranslators );
+	}
+
+	public Map< Parameter< ?, ? >, Function< ?, ? > > getBackwardUITranslators()
+	{
+		return Collections.unmodifiableMap( backwardUITranslators );
 	}
 
 	/*
@@ -157,9 +151,9 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 */
 
 	/**
-	 * Creates a 'one or the other' relationships. The arguments that will be
-	 * passed to the {@link SelectableParameters} will be flagged as as not to be
-	 * used concurrently in the same command. This will be used when creating
+	 * Creates a 'one or the other' relationships. The parameters that will be
+	 * passed to the {@link SelectableParameters} will be flagged as as not to
+	 * be used concurrently in the same command. This will be used when creating
 	 * UIs.
 	 *
 	 * @return a new {@link SelectableParameters} instance.
@@ -275,10 +269,10 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 */
 
 	/**
-	 * Base class for builders that can add arguments to this configurator.
+	 * Base class for builders that can add parameters to this configurator.
 	 * 
 	 * @param <A>
-	 *            the type of argument this builder creates.
+	 *            the type of parameter this builder creates.
 	 * @param <T>
 	 *            the type of the builder, for fluent API.
 	 */
@@ -295,11 +289,11 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		protected boolean visible = true; // by default
 
 		/**
-		 * Specifies the key to use to persist the value of this argument. If
-		 * <code>null</code>, the argument will not be persisted.
+		 * Specifies the key to use to persist the value of this parameter. If
+		 * <code>null</code>, the parameter will not be persisted.
 		 *
 		 * @param key
-		 *            the argument key.
+		 *            the parameter key.
 		 * @return this adder.
 		 */
 		public T key( final String key )
@@ -309,7 +303,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Specifies whether this argument will be visible in user interfaces
+		 * Specifies whether this parameter will be visible in user interfaces
 		 * generated from the configurator.
 		 *
 		 * @param visible
@@ -323,10 +317,10 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Specifies a user-friendly name for the argument.
+		 * Specifies a user-friendly name for the parameter.
 		 *
 		 * @param name
-		 *            the argument name.
+		 *            the parameter name.
 		 * @return this adder.
 		 */
 		public T name( final String name )
@@ -336,7 +330,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Specifies a help text for the argument.
+		 * Specifies a help text for the parameter.
 		 *
 		 * @param help
 		 *            the help text.
@@ -349,23 +343,23 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Returns the argument created by this builder.
+		 * Returns the parameter created by this builder.
 		 *
-		 * @return the argument.
+		 * @return the parameter.
 		 */
 		public abstract A get();
 
 	}
 
 	/**
-	 * Base class for builders that can add arguments to this configurator.
+	 * Base class for builders that can add parameters to this configurator.
 	 * 
 	 * @param <A>
-	 *            the type of argument this builder creates.
+	 *            the type of parameter this builder creates.
 	 * @param <T>
 	 *            the type of the builder, for fluent API.
 	 * @param <O>
-	 *            the type of value the argument created by this builder
+	 *            the type of value the parameter created by this builder
 	 *            accepts.
 	 */
 	@SuppressWarnings( "unchecked" )
@@ -377,10 +371,10 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		protected O defaultValue;
 
 		/**
-		 * Specifies units for values accepted by this argument.
+		 * Specifies units for values accepted by this parameter.
 		 *
 		 * @param units
-		 *            argument value units.
+		 *            parameter value units.
 		 * @return this adder.
 		 */
 		public T units( final String units )
@@ -390,11 +384,11 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Specifies a default value for this argument. If the argument is not
+		 * Specifies a default value for this parameter. If the parameter is not
 		 * set, it will appear in the command line with this default value.
 		 *
 		 * @param defaultValue
-		 *            the argument default value.
+		 *            the parameter default value.
 		 * @return this adder.
 		 */
 		public T defaultValue( final O defaultValue )
@@ -412,8 +406,8 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		protected O max;
 
 		/**
-		 * Specifies a min for the values accepted by this argument. If the user
-		 * sets a value below this min value, an error is thrown.
+		 * Specifies a min for the values accepted by this parameter. If the
+		 * user sets a value below this min value, an error is thrown.
 		 *
 		 * @param min
 		 *            the min value.
@@ -426,8 +420,8 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Specifies a max for the values accepted by this argument. If the user
-		 * sets a value above this max value, an error is thrown.
+		 * Specifies a max for the values accepted by this parameter. If the
+		 * user sets a value above this max value, an error is thrown.
 		 *
 		 * @param max
 		 *            the max value.
@@ -561,7 +555,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		private final List< String > mappeds = new ArrayList<>();
 
 		/**
-		 * Adds a selectable item for this choice argument. The user will be
+		 * Adds a selectable item for this choice parameter. The user will be
 		 * able to select from the list of choices added by this method.
 		 *
 		 * @param choice
@@ -574,7 +568,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Adds a selectable item for this choice argument. The user will be
+		 * Adds a selectable item for this choice parameter. The user will be
 		 * able to select from the list of choices added by this method. In the
 		 * command line, this choice will be mapped to the specified string.
 		 * <p>
@@ -591,7 +585,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		 *            the choice to add.
 		 * @param mapped
 		 *            the string the choice will be mapped in the command line
-		 *            argument.
+		 *            parameter.
 		 * @return this adder.
 		 */
 		public ChoiceAdder addChoice( final String choice, final String mapped )
@@ -605,7 +599,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Adds the specified items for this choice argument. The user will be
+		 * Adds the specified items for this choice parameter. The user will be
 		 * able to select from the list of choices added by this method.
 		 *
 		 * @param c
@@ -620,14 +614,14 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Specifies a default value for this argument. If the argument is not
+		 * Specifies a default value for this parameter. If the parameter is not
 		 * set, it will appear in the command line with this default value.
 		 * <p>
 		 * The value specified must belong to the list of choices set with
 		 * {@link #addChoice(String)} or {@link #addChoiceAll(Collection)}.
 		 *
 		 * @param defaultChoice
-		 *            the argument default value.
+		 *            the parameter default value.
 		 * @return this adder.
 		 */
 		@Override
@@ -641,8 +635,8 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Specifies a default value for this argument, by selecting the
-		 * possible value in order or addition. If the argument is not set, it
+		 * Specifies a default value for this parameter, by selecting the
+		 * possible value in order or addition. If the parameter is not set, it
 		 * will appear in the command line with this default value.
 		 *
 		 * @param selected
@@ -735,19 +729,9 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 */
 
 	/**
-	 * Adds a boolean flag argument to the CLI, via a builder.
-	 * <p>
-	 * In the CLI tools we have been trying to implement, they exist in two
-	 * flavors, that are both supported.
+	 * Adds a boolean parameter to the config, via a builder.
 	 *
-	 * If the argument starts with a double-dash <code>--</code>, as in Python
-	 * argparse syntax, then it is understood that setting this flag to true
-	 * makes it appear in the CLI. For instance: <code>--use-gpu</code>.
-	 *
-	 * If the arguments ends with a '=' sign (e.g. <code>"save_txt="</code>),
-	 * then it expects to receive a 'true' or 'false' value.
-	 *
-	 * @return a new flag argument builder.
+	 * @return a new flag parameter builder.
 	 */
 	protected BooleanAdder addFlag()
 	{
@@ -755,9 +739,9 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/**
-	 * Adds a string argument to the CLI, via a builder.
+	 * Adds a string parameter to the config, via a builder.
 	 *
-	 * @return new string argument builder.
+	 * @return new string parameter builder.
 	 */
 	protected StringAdder addStringArgument()
 	{
@@ -765,9 +749,9 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/**
-	 * Adds a path argument to the CLI, via a builder.
+	 * Adds a path parameter to the config, via a builder.
 	 *
-	 * @return new path argument builder.
+	 * @return new path parameter builder.
 	 */
 	protected PathAdder addPathArgument()
 	{
@@ -775,9 +759,9 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/**
-	 * Adds a integer argument to the CLI, via a builder.
+	 * Adds a integer parameter to the config, via a builder.
 	 *
-	 * @return new integer argument builder.
+	 * @return new integer parameter builder.
 	 */
 	protected IntAdder addIntArgument()
 	{
@@ -785,9 +769,9 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/**
-	 * Adds a double argument to the CLI, via a builder.
+	 * Adds a double parameter to the config, via a builder.
 	 *
-	 * @return new double argument builder.
+	 * @return new double parameter builder.
 	 */
 	protected DoubleAdder addDoubleArgument()
 	{
@@ -795,11 +779,11 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/**
-	 * Adds a choice argument to the CLI, via a builder. Such arguments can
+	 * Adds a choice parameter to the config, via a builder. Such parameters can
 	 * accept a series of discrete values (specified by addChoice() method in
 	 * the builder).
 	 *
-	 * @return new choice argument builder.
+	 * @return new choice parameter builder.
 	 */
 	protected ChoiceAdder addChoiceArgument()
 	{
@@ -807,7 +791,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/**
-	 * Adds an enum argument to the CLI, via a builder. Such arguments can
+	 * Adds an enum parameter to the config, via a builder. Such parameters can
 	 * accept a series of discrete values, that are the values of the specified
 	 * enum class.
 	 * 
@@ -815,26 +799,11 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *            the type of the enum values.
 	 * @param enumClass
 	 *            the class of the enum values.
-	 * @return new enum argument builder.
+	 * @return new enum parameter builder.
 	 */
 	protected < E extends Enum< E > > EnumAdder< E > addEnumArgument( final Class< E > enumClass )
 	{
 		return new EnumAdder<>( enumClass );
-	}
-
-	/**
-	 * Adds an extra argument, defined by other means than the adder methods.
-	 *
-	 * @param extraArg
-	 *            the argument to add to this CLI config.
-	 * @param <T>
-	 *            the argument type.
-	 * @return the argument
-	 */
-	protected < T extends Parameter< ?, ? > > T addExtraArgument( final T extraArg )
-	{
-		this.params.add( extraArg );
-		return extraArg;
 	}
 
 	protected GroupAdder addGroup( final String name )
@@ -871,32 +840,32 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/**
-	 * Decorates the specified argument with a translator, that will modify the
+	 * Decorates the specified parameter with a translator, that will modify the
 	 * value <b>displayed</b> in the user-interfaces built with this
 	 * configurator.
 	 * <p>
-	 * This can be used to translate the value of an argument into a more
+	 * This can be used to translate the value of an parameter into a more
 	 * user-friendly value, for instance to translate a radius into a diameter.
 	 * <p>
 	 * Warning: display translation is not supported for {@link BooleanParam}
 	 * and {@link ChoiceParam}.
 	 *
 	 * @param arg
-	 *            the argument to decorate.
+	 *            the parameter to decorate.
 	 * @param forward
 	 *            the function to apply to the value to display it in the UI.
 	 * @param backward
 	 *            the function to apply to the value to get the value back from
 	 *            the UI.
 	 * @param <O>
-	 *            the type of value the argument accepts.
+	 *            the type of value the parameter accepts.
 	 */
 	protected < O > void setDisplayTranslator( final Parameter< ?, O > arg, final Function< O, O > forward, final Function< O, O > backward )
 	{
 		if ( arg instanceof ChoiceParam )
-			throw new IllegalArgumentException( "ChoiceArgument does not support display translators." );
+			throw new IllegalArgumentException( "ChoiceParam does not support display translators." );
 		if ( arg instanceof BooleanParam )
-			throw new IllegalArgumentException( "Flag does not support display translators." );
+			throw new IllegalArgumentException( "BooleanParam does not support display translators." );
 
 		forwardUITranslators.put( arg, forward );
 		backwardUITranslators.put( arg, backward );
