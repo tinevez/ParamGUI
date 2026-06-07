@@ -1,11 +1,16 @@
 package org.scijava.ui.paramUI;
 
+import java.awt.event.WindowAdapter;
 import java.util.Map;
+
+import javax.swing.JFrame;
 
 import org.scijava.ui.paramUI.Parameters.DoubleParam;
 import org.scijava.ui.paramUI.Parameters.EnumParam;
 import org.scijava.ui.paramUI.Parameters.IntParam;
 import org.scijava.ui.paramUI.Parameters.PathParam;
+import org.scijava.ui.paramUI.gui.GuiBuilder;
+import org.scijava.ui.paramUI.gui.GuiBuilder.ConfigPanel;
 import org.scijava.ui.paramUI.visitors.Maps;
 import org.scijava.ui.paramUI.visitors.Strings;
 
@@ -173,5 +178,30 @@ public class Demo
 		System.out.println( "------------------------------" );
 		System.out.println( Strings.echo( config2 ) );
 		System.out.println( "------------------------------" );
+
+		/*
+		 * GUI
+		 */
+
+		final ConfigPanel panel = GuiBuilder.build( config2 );
+		final JFrame frame = new JFrame( config2.getName() );
+		frame.addWindowListener( new WindowAdapter()
+		{
+			@Override
+			public void windowClosing( final java.awt.event.WindowEvent e )
+			{
+				System.out.println();
+				System.out.println( "------------------------------" );
+				System.out.println( "After modifying with the UI" );
+				System.out.println( "------------------------------" );
+				System.out.println( Strings.echo( config2 ) );
+				System.out.println( "------------------------------" );
+				System.exit( 0 );
+			}
+		} );
+		frame.getContentPane().add( panel );
+		frame.pack();
+		frame.setLocationByPlatform( true );
+		frame.setVisible( true );
 	}
 }
