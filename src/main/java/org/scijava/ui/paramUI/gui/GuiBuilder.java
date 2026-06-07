@@ -691,7 +691,7 @@ public class GuiBuilder implements ParameterVisitor
 
 			// Open a collapsible section if we just entered a group
 			if ( it.groupEntered() && it.getCurrentGroup() != null )
-				builder.startGroup( it.getCurrentGroup().getName(), it.getCurrentGroup().isVisible() );
+				builder.startGroup( it.getCurrentGroup().getName(), !it.getCurrentGroup().isVisible() );
 
 			// Skip standalone duplicates of grouped parameters
 			if ( !it.inGroup() && paramsInAnyGroup.contains( arg ) )
