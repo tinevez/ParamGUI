@@ -1,4 +1,4 @@
-package org.scijava.ui.paramUI.gui.elements;
+package org.scijava.ui.paramUI.visitors.gui.elements;
 
 import java.awt.BorderLayout;
 import java.awt.Component;

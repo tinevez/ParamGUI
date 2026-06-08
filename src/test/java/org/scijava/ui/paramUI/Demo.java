@@ -10,10 +10,10 @@ import org.scijava.ui.paramUI.Parameters.DoubleParam;
 import org.scijava.ui.paramUI.Parameters.EnumParam;
 import org.scijava.ui.paramUI.Parameters.IntParam;
 import org.scijava.ui.paramUI.Parameters.PathParam;
-import org.scijava.ui.paramUI.gui.GuiBuilder;
-import org.scijava.ui.paramUI.gui.GuiBuilder.ConfigPanel;
 import org.scijava.ui.paramUI.visitors.Maps;
 import org.scijava.ui.paramUI.visitors.Strings;
+import org.scijava.ui.paramUI.visitors.gui.GuiBuilder;
+import org.scijava.ui.paramUI.visitors.gui.GuiBuilder.ConfigPanel;
 
 /**
  * Demo with a UI that would configure Cellpose 3.

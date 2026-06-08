@@ -1,20 +1,20 @@
-package org.scijava.ui.paramUI.gui;
+package org.scijava.ui.paramUI.visitors.gui;
 
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.SMALL_FONT;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.booleanElement;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.boundedDoubleElement;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.doubleElement;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.enumElement;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.intElement;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.linkedCheckBox;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.linkedComboBoxEnumSelector;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.linkedComboBoxSelector;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.linkedFormattedTextField;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.linkedSliderPanel;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.linkedSpinner;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.linkedTextField;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.listElement;
-import static org.scijava.ui.paramUI.gui.elements.StyleElements.stringElement;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.SMALL_FONT;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.booleanElement;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.boundedDoubleElement;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.doubleElement;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.enumElement;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.intElement;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.linkedCheckBox;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.linkedComboBoxEnumSelector;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.linkedComboBoxSelector;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.linkedFormattedTextField;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.linkedSliderPanel;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.linkedSpinner;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.linkedTextField;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.listElement;
+import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.stringElement;
 
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -66,19 +66,19 @@ import org.scijava.ui.paramUI.Parameters.IntParam;
 import org.scijava.ui.paramUI.Parameters.Parameter;
 import org.scijava.ui.paramUI.Parameters.PathParam;
 import org.scijava.ui.paramUI.Parameters.StringParam;
-import org.scijava.ui.paramUI.gui.elements.BoundedValue;
-import org.scijava.ui.paramUI.gui.elements.BoundedValue.UpdateListener;
-import org.scijava.ui.paramUI.gui.elements.StyleElements.BooleanElement;
-import org.scijava.ui.paramUI.gui.elements.StyleElements.BoundedDoubleElement;
-import org.scijava.ui.paramUI.gui.elements.StyleElements.DoubleElement;
-import org.scijava.ui.paramUI.gui.elements.StyleElements.EnumElement;
-import org.scijava.ui.paramUI.gui.elements.StyleElements.IntElement;
-import org.scijava.ui.paramUI.gui.elements.StyleElements.ListElement;
-import org.scijava.ui.paramUI.gui.elements.StyleElements.StringElement;
-import org.scijava.ui.paramUI.gui.elements.StyleElements.StyleElement;
 import org.scijava.ui.paramUI.utils.CollapsibleSection;
 import org.scijava.ui.paramUI.utils.FileChooser;
 import org.scijava.ui.paramUI.utils.FileChooser.DialogType;
+import org.scijava.ui.paramUI.visitors.gui.elements.BoundedValue;
+import org.scijava.ui.paramUI.visitors.gui.elements.BoundedValue.UpdateListener;
+import org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.BooleanElement;
+import org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.BoundedDoubleElement;
+import org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.DoubleElement;
+import org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.EnumElement;
+import org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.IntElement;
+import org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.ListElement;
+import org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.StringElement;
+import org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.StyleElement;
 
 public class GuiBuilder implements ParameterVisitor
 {

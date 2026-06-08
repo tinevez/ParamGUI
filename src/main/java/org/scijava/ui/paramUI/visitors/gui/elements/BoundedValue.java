@@ -1,19 +1,19 @@
-package org.scijava.ui.paramUI.gui.elements;
+package org.scijava.ui.paramUI.visitors.gui.elements;
 
 /**
- * A {@code double} variable that can take any value in a given range. A
+ * A <code>int</code> variable that can take any value in a given range. A
  * {@link #setUpdateListener(UpdateListener) listener} is notified when the
  * value or its allowed range is changed.
  *
  * @author Tobias Pietzsch
  */
-public class BoundedValueDouble
+public class BoundedValue
 {
-	private double rangeMin;
+	private int rangeMin;
 
-	private double rangeMax;
+	private int rangeMax;
 
-	private double currentValue;
+	private int currentValue;
 
 	public interface UpdateListener
 	{
@@ -22,7 +22,7 @@ public class BoundedValueDouble
 
 	private UpdateListener updateListener;
 
-	public BoundedValueDouble( final double rangeMin, final double rangeMax, final double currentValue )
+	public BoundedValue( final int rangeMin, final int rangeMax, final int currentValue )
 	{
 		this.rangeMin = rangeMin;
 		this.rangeMax = rangeMax;
@@ -30,22 +30,22 @@ public class BoundedValueDouble
 		updateListener = null;
 	}
 
-	public double getRangeMin()
+	public int getRangeMin()
 	{
 		return rangeMin;
 	}
 
-	public double getRangeMax()
+	public int getRangeMax()
 	{
 		return rangeMax;
 	}
 
-	public double getCurrentValue()
+	public int getCurrentValue()
 	{
 		return currentValue;
 	}
 
-	public void setRange( final double min, final double max )
+	public void setRange( final int min, final int max )
 	{
 		assert min <= max;
 		rangeMin = min;
@@ -56,7 +56,7 @@ public class BoundedValueDouble
 			updateListener.update();
 	}
 
-	public void setCurrentValue( final double value )
+	public void setCurrentValue( final int value )
 	{
 		currentValue = value;
 

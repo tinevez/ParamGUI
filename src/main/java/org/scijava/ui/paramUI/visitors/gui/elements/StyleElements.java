@@ -1,4 +1,4 @@
-package org.scijava.ui.paramUI.gui.elements;
+package org.scijava.ui.paramUI.visitors.gui.elements;
 
 import java.awt.Color;
 import java.awt.Component;
@@ -44,8 +44,8 @@ import javax.swing.SwingConstants;
 import javax.swing.UIManager;
 import javax.swing.border.EmptyBorder;
 
-import org.scijava.ui.paramUI.gui.elements.colormap.Colormap;
 import org.scijava.ui.paramUI.utils.GuiUtils;
+import org.scijava.ui.paramUI.visitors.gui.elements.colormap.Colormap;
 
 public class StyleElements
 {
