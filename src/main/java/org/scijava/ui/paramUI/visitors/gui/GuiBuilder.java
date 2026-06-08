@@ -358,14 +358,30 @@ public class GuiBuilder implements ParameterVisitor
 	{
 		// Create a collapsible section with its own grid
 		final CollapsibleSection section = new CollapsibleSection( title, SMALL_FONT, collapsed );
-		// Add section (header + body) as a full-width component to the root
-		// panel
-		addToLayout( null, section );
 
-		// Prepare routing to the group body
+		// Full width.
+		c.gridx = 0;
+		c.gridwidth = 4;
+		c.fill = GridBagConstraints.HORIZONTAL;
+		c.insets = new Insets( topInset, 0, bottomInset, 0 );
+		panel.add( section, c );
+
+		// advance main grid row and restore defaults
+		c.gridy++;
+		c.gridx = 0;
+		c.gridwidth = 1;
+		c.fill = GridBagConstraints.NONE;
+
+		// Route subsequent rows to the group's body
 		inGroup = true;
 		groupBody = section.getBody();
 
+		// Give the group body its own 4-column grid matching the root
+		final GridBagLayout gbl = new GridBagLayout();
+		gbl.columnWeights = new double[] { 0., 1., 0., 0. };
+		groupBody.setLayout( gbl );
+
+		// Constraints used inside the group body
 		gc = new GridBagConstraints();
 		gc.fill = GridBagConstraints.HORIZONTAL;
 		gc.gridwidth = 1;
@@ -509,7 +525,7 @@ public class GuiBuilder implements ParameterVisitor
 		final int savedGridY = CC.gridy;
 		CC.gridx = 3;
 		CC.gridwidth = 1;
-		CC.anchor = GridBagConstraints.LINE_END;
+		CC.anchor = inGroup ? GridBagConstraints.LINE_START : GridBagConstraints.LINE_END;
 		final JComponent helpCell = buildHelpCell( help );
 		target.add( helpCell, CC );
 
@@ -581,7 +597,7 @@ public class GuiBuilder implements ParameterVisitor
 		final int savedGridY = CC.gridy;
 		CC.gridx = 3;
 		CC.gridwidth = 1;
-		CC.anchor = GridBagConstraints.LINE_END;
+		CC.anchor = inGroup ? GridBagConstraints.LINE_START : GridBagConstraints.LINE_END;
 		final JComponent helpCell = buildHelpCell( help );
 		target.add( helpCell, CC );
 
@@ -647,7 +663,7 @@ public class GuiBuilder implements ParameterVisitor
 		CC.gridx++;
 		CC.gridx++;
 		CC.gridwidth = 1;
-		CC.anchor = GridBagConstraints.LINE_END;
+		CC.anchor = inGroup ? GridBagConstraints.LINE_START : GridBagConstraints.LINE_END;
 		final JComponent helpCell = buildHelpCell( help );
 		target.add( helpCell, CC );
 
