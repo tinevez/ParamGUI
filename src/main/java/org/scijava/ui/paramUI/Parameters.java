@@ -12,9 +12,9 @@ public class Parameters
 	 * Base class for parameters.
 	 *
 	 * @param <T>
-	 *            the implementing type of the argument.
+	 *            the implementing type of the parameter.
 	 * @param <O>
-	 *            the type of value this argument accepts.
+	 *            the type of value this parameter accepts.
 	 */
 	@SuppressWarnings( "unchecked" )
 	public static abstract class Parameter< T extends Parameter< T, O >, O >
@@ -62,10 +62,10 @@ public class Parameters
 		}
 
 		/**
-		 * Returns the value of this argument, or the default value if no value
+		 * Returns the value of this parameter, or the default value if no value
 		 * has been set.
 		 *
-		 * @return the value of this argument, or the default value if no value
+		 * @return the value of this parameter, or the default value if no value
 		 *         has been set.
 		 */
 		public O getValue()
@@ -74,14 +74,14 @@ public class Parameters
 		}
 
 		/**
-		 * If <code>false</code>, this argument won't be shown in UIs. It will
+		 * If <code>false</code>, this parameter won't be shown in UIs. It will
 		 * be used for the command line builder nonetheless.
 		 *
 		 * @param visible
-		 *            whether this argument should be visible in the UI or not.
+		 *            whether this parameter should be visible in the UI or not.
 		 *            By default: <code>true</code>.
 		 * @see CliGuiBuilder
-		 * @return the argument.
+		 * @return the parameter.
 		 */
 		T visible( final boolean visible )
 		{
@@ -107,14 +107,14 @@ public class Parameters
 		}
 
 		/**
-		 * Sets the String key to use in TrackMate settings map
-		 * de/serialization.
+		 * Sets the String key to of this parameter, which will be used mainly
+		 * for de / serialization purposes. The key must be unique within a
+		 * config.
+		 * 
 		 *
 		 * @param key
-		 *            the key to use. By default: the {@link #name} of this
-		 *            argument.
-		 * @return the argument.
-		 * @see TrackMateSettingsBuilder
+		 *            the key to use.
+		 * @return the parameter.
 		 */
 		T key( final String key )
 		{
@@ -164,7 +164,7 @@ public class Parameters
 		{}
 
 		/**
-		 * Sets this flag argument to <code>true</code>.
+		 * Sets this flag parameter to <code>true</code>.
 		 */
 		public void set()
 		{
@@ -179,7 +179,8 @@ public class Parameters
 	}
 
 	/**
-	 * Specialization of {@link BooleanParam} to be used in a GUI.
+	 * Specialization of {@link StringParam} to be used to enter file of folder
+	 * path in a GUI.
 	 */
 	public static class PathParam extends AbstractStringParam< PathParam >
 	{
@@ -362,9 +363,9 @@ public class Parameters
 	 * and max.
 	 * 
 	 * @param <T>
-	 *            the implementing type of the argument.
+	 *            the implementing type of the parameter.
 	 * @param <O>
-	 *            the type of value this argument accepts.
+	 *            the type of value this parameter accepts.
 	 */
 	@SuppressWarnings( "unchecked" )
 	public static abstract class BoundedValueParameter< T extends BoundedValueParameter< T, O >, O > extends Parameter< T, O >

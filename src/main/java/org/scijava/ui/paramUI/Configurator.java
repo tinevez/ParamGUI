@@ -51,7 +51,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 
 	/**
 	 * The translators that will be applied to a value read from the UI, before
-	 * storing it in the Argument.
+	 * storing it in the Parameter object.
 	 */
 	protected final Map< Parameter< ?, ? >, Function< ?, ? > > backwardUITranslators = new HashMap<>();
 
@@ -147,7 +147,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/*
-	 * SELECTABLE ARGUMENT GROUPS.
+	 * SELECTABLE PARAMETER GROUPS.
 	 */
 
 	/**
@@ -158,7 +158,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return a new {@link SelectableParameters} instance.
 	 */
-	protected SelectableParameters addSelectableArguments()
+	protected SelectableParameters addSelectableParameters()
 	{
 		final SelectableParameters sa = new SelectableParameters();
 		selectables.add( sa );
@@ -743,7 +743,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return new string parameter builder.
 	 */
-	protected StringAdder addStringArgument()
+	protected StringAdder addStringParameter()
 	{
 		return new StringAdder();
 	}
@@ -753,7 +753,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return new path parameter builder.
 	 */
-	protected PathAdder addPathArgument()
+	protected PathAdder addPathParameter()
 	{
 		return new PathAdder();
 	}
@@ -763,7 +763,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return new integer parameter builder.
 	 */
-	protected IntAdder addIntArgument()
+	protected IntAdder addIntParameter()
 	{
 		return new IntAdder();
 	}
@@ -773,7 +773,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return new double parameter builder.
 	 */
-	protected DoubleAdder addDoubleArgument()
+	protected DoubleAdder addDoubleParameter()
 	{
 		return new DoubleAdder();
 	}
@@ -785,7 +785,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return new choice parameter builder.
 	 */
-	protected ChoiceAdder addChoiceArgument()
+	protected ChoiceAdder addChoiceParameter()
 	{
 		return new ChoiceAdder();
 	}
@@ -801,11 +801,19 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *            the class of the enum values.
 	 * @return new enum parameter builder.
 	 */
-	protected < E extends Enum< E > > EnumAdder< E > addEnumArgument( final Class< E > enumClass )
+	protected < E extends Enum< E > > EnumAdder< E > addEnumParameter( final Class< E > enumClass )
 	{
 		return new EnumAdder<>( enumClass );
 	}
 
+	/**
+	 * Adds a group of parameters to the config, via a builder. Such groups are
+	 * used to group parameters together in the UI.
+	 * 
+	 * @param name
+	 *            the name of the group.
+	 * @return a new group builder.
+	 */
 	protected GroupAdder addGroup( final String name )
 	{
 		return new GroupAdder().name( name );

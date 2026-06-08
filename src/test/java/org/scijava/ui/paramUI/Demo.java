@@ -52,27 +52,27 @@ public class Demo
 			super( "Cellpose 3", "https://imagej.net/plugins/cellpose-appose#usage" );
 
 			// Choice among an enum.
-			this.builtinModel = addEnumArgument( Cellpose3BuiltinModels.class )
+			this.builtinModel = addEnumParameter( Cellpose3BuiltinModels.class )
 					.key( "BUILTIN_MODEL" )
 					.defaultValue( Cellpose3BuiltinModels.CYTO3 )
 					.name( "Builtin model" )
 					.get();
 
 			// File path.
-			this.customModel = addPathArgument()
+			this.customModel = addPathParameter()
 					.key( "CUSTOM_MODEL_PATH" )
 					.name( "Path to custom model" )
 					.help( "Path to a custom Cellpose 3 model. " )
 					.get();
 
 			// One or the other, but not both.
-			this.builtinOrCustom = addSelectableArguments()
+			this.builtinOrCustom = addSelectableParameters()
 					.key( "BUILTIN_OR_CUSTOM" )
 					.add( builtinModel )
 					.add( customModel );
 
 			// Channels, two int params.
-			this.chan1 = addIntArgument()
+			this.chan1 = addIntParameter()
 					.key( "CHAN1" )
 					.name( "Main channel" )
 					.help( "The main channel to segment. Select 0 to use a grayscale blend of all channels." )
@@ -80,7 +80,7 @@ public class Demo
 					.min( 0 )
 					.max( nChannels )
 					.get();
-			this.chan2 = addIntArgument()
+			this.chan2 = addIntParameter()
 					.key( "CHAN2" )
 					.name( "Optional channel" )
 					.help( "The second channel to segment. Select 0 to skip using a second channel." )
@@ -92,7 +92,7 @@ public class Demo
 			// Diameter param is in pixel, but we want to display it in physical
 			// units. So we set a translator that converts between the two.
 
-			this.diameter = addDoubleArgument()
+			this.diameter = addDoubleParameter()
 					.key( "DIAMETER" )
 					.name( "Diameter" )
 					.units( units )
@@ -106,7 +106,7 @@ public class Demo
 			 * Advanced parameters.
 			 */
 
-			this.flowThreshold = addDoubleArgument()
+			this.flowThreshold = addDoubleParameter()
 					.key( "FLOW_THRESHOLD" )
 					.name( "Flow threshold" )
 					.help( "<html>Threshold for flow error filtering. Lower = more masks (permissive), Higher = fewer masks (strict).</html>" )
@@ -115,7 +115,7 @@ public class Demo
 					.max( 3. )
 					.get();
 
-			this.cellprobThreshold = addDoubleArgument()
+			this.cellprobThreshold = addDoubleParameter()
 					.key( "CELPROB_THRESHOLD" )
 					.name( "Cell probability threshold" )
 					.help( "<html>Threshold for cell probability. Increase to filter low-confidence detections.</html>" )
@@ -124,7 +124,7 @@ public class Demo
 					.max( 6. )
 					.get();
 
-			this.minSize = addIntArgument()
+			this.minSize = addIntParameter()
 					.key( "MIN_SIZE" )
 					.name( "Minimum size" )
 					.help( "Objects smaller than this are removed." )
