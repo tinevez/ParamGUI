@@ -227,20 +227,25 @@ public class GuiBuilder implements ParameterVisitor
 		};
 		final Consumer< Double > valueSetter = ( v ) -> {
 			final double value = backward.apply( v );
-			arg.set( value );
+			// Clamp
+			if ( arg.hasMax() && value > arg.getMax() )
+				arg.set( arg.getMax() );
+			else if ( arg.hasMin() && value < arg.getMin() )
+				arg.set( arg.getMin() );
+			else
+				arg.set( value );
 		};
 
 		if ( arg.hasMin() && arg.hasMax() )
 		{
 			final double min = forward.apply( arg.getMin() );
 			final double max = forward.apply( arg.getMax() );
-			final BoundedDoubleElement element = boundedDoubleElement( arg.getName(),
-					min, max, valueGetter, valueSetter );
+			final BoundedDoubleElement element = boundedDoubleElement( arg.getName(), min, max, valueGetter, valueSetter );
 			panel.elements.put( arg.getKey(), element );
 			addToLayout(
 					arg.getHelp(),
 					new JLabel( element.getLabel() ),
-					linkedSliderPanel( element, tfCols, arg.getMax() / 50 ),
+					linkedSliderPanel( element, tfCols, ( arg.getMax() - arg.getMin() ) / 50 ),
 					arg.getUnits(),
 					arg );
 		}
@@ -248,11 +253,12 @@ public class GuiBuilder implements ParameterVisitor
 		{
 			final DoubleElement element = doubleElement( arg.getName(), valueGetter, valueSetter );
 			panel.elements.put( arg.getKey(), element );
-			element.set( forward.apply( arg.getValue() ) );
+			final Double min = arg.hasMin() ? forward.apply( arg.getMin() ) : null;
+			final Double max = arg.hasMax() ? forward.apply( arg.getMax() ) : null;
 			addToLayout(
 					arg.getHelp(),
 					new JLabel( element.getLabel() ),
-					linkedFormattedTextField( element ),
+					linkedFormattedTextField( element, min, max ),
 					arg.getUnits(),
 					arg );
 		}

@@ -948,13 +948,45 @@ public class StyleElements
 		return cb;
 	}
 
-	public static JFormattedTextField linkedFormattedTextField( final DoubleElement element )
+	/**
+	 * Create a JFormattedTextField linked to a DoubleElement. The value of the
+	 * text field is updated when the element is updated and vice versa. The
+	 * text field commits the edit on focus lost and on enter.
+	 * 
+	 * @param element
+	 *            the DoubleElement to link to the text field.
+	 * @param min
+	 *            the minimum value of the text field (inclusive). The text
+	 *            field will not allow values less than this. If null, no
+	 *            minimum is enforced.
+	 * @param max
+	 *            the maximum value of the text field (inclusive). The text
+	 *            field will not allow values greater than this. If null, no
+	 *            maximum is enforced.
+	 * @return a JFormattedTextField linked to the given DoubleElement.
+	 */
+	public static JFormattedTextField linkedFormattedTextField( final DoubleElement element, final Double min, final Double max )
 	{
 		final JFormattedTextField ftf = new JFormattedTextField( format );
 		ftf.setHorizontalAlignment( JFormattedTextField.RIGHT );
 		ftf.setValue( Double.valueOf( element.get() ) );
 
-		ftf.addActionListener( e -> element.set( ( ( Number ) ftf.getValue() ).doubleValue() ) );
+		final Runnable validateAndSet = () -> {
+			double value = ( ( Number ) ftf.getValue() ).doubleValue();
+			if ( min != null && value < min )
+			{
+				value = min;
+				ftf.setValue( Double.valueOf( value ) );
+			}
+			if ( max != null && value > max )
+			{
+				value = max;
+				ftf.setValue( Double.valueOf( value ) );
+			}
+			element.set( value );
+		};
+
+		ftf.addActionListener( e -> validateAndSet.run() );
 		ftf.addFocusListener( new FocusAdapter()
 		{
 			@Override
@@ -963,7 +995,7 @@ public class StyleElements
 				try
 				{
 					ftf.commitEdit();
-					element.set( ( ( Number ) ftf.getValue() ).doubleValue() );
+					validateAndSet.run();
 				}
 				catch ( final ParseException e1 )
 				{}
