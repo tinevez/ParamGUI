@@ -284,10 +284,6 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 
 		protected String name;
 
-		protected String help;
-
-		protected boolean visible = true; // by default
-
 		/**
 		 * Specifies the key to use to persist the value of this parameter. If
 		 * <code>null</code>, the parameter will not be persisted.
@@ -303,20 +299,6 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Specifies whether this parameter will be visible in user interfaces
-		 * generated from the configurator.
-		 *
-		 * @param visible
-		 *            UI visibility.
-		 * @return this adder.
-		 */
-		public T visible( final boolean visible )
-		{
-			this.visible = visible;
-			return ( T ) this;
-		}
-
-		/**
 		 * Specifies a user-friendly name for the parameter.
 		 *
 		 * @param name
@@ -326,19 +308,6 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		public T name( final String name )
 		{
 			this.name = name;
-			return ( T ) this;
-		}
-
-		/**
-		 * Specifies a help text for the parameter.
-		 *
-		 * @param help
-		 *            the help text.
-		 * @return this adder.
-		 */
-		public T help( final String help )
-		{
-			this.help = help;
 			return ( T ) this;
 		}
 
@@ -370,6 +339,10 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 
 		protected O defaultValue;
 
+		protected String help;
+
+		protected boolean visible = true; // by default
+
 		/**
 		 * Specifies units for values accepted by this parameter.
 		 *
@@ -380,6 +353,33 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		public T units( final String units )
 		{
 			this.units = units;
+			return ( T ) this;
+		}
+
+		/**
+		 * Specifies whether this parameter will be visible in user interfaces
+		 * generated from the configurator.
+		 *
+		 * @param visible
+		 *            UI visibility.
+		 * @return this adder.
+		 */
+		public T visible( final boolean visible )
+		{
+			this.visible = visible;
+			return ( T ) this;
+		}
+
+		/**
+		 * Specifies a help text for the parameter.
+		 *
+		 * @param help
+		 *            the help text.
+		 * @return this adder.
+		 */
+		public T help( final String help )
+		{
+			this.help = help;
 			return ( T ) this;
 		}
 
@@ -701,11 +701,27 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	protected class GroupAdder extends Adder< ParameterGroup, GroupAdder >
 	{
 
-		private List< Parameter< ?, ? > > params = new ArrayList<>();
+		protected final List< Parameter< ?, ? > > params = new ArrayList<>();
+
+		protected boolean collapsed = true; // by default
 
 		public < T extends Parameter< T, O >, O > GroupAdder add( final T param )
 		{
 			params.add( param );
+			return this;
+		}
+
+		/**
+		 * Set whether the group is folded (collapsed, default) or unfolded
+		 * (expanded) when displayed in a UI.
+		 * 
+		 * @param collapsed
+		 *            whether the group is collapsed when displayed in a UI.
+		 * @return this group adder.
+		 */
+		public GroupAdder collapsed( final boolean collapsed )
+		{
+			this.collapsed = collapsed;
 			return this;
 		}
 
@@ -714,8 +730,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		{
 			final ParameterGroup group = new ParameterGroup()
 					.name( name )
-					.help( help )
-					.visible( visible );
+					.collapsed( collapsed );
 			for ( final Parameter< ?, ? > param : params )
 				group.add( param );
 			Configurator.this.groups.add( group );

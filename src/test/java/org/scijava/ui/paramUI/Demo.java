@@ -56,6 +56,7 @@ public class Demo
 					.key( "BUILTIN_MODEL" )
 					.defaultValue( Cellpose3BuiltinModels.CYTO3 )
 					.name( "Builtin model" )
+					.help( "https://cellpose.readthedocs.io/en/v3.1.1.1/models.html#full-built-in-models" )
 					.get();
 
 			// File path.
@@ -95,6 +96,9 @@ public class Demo
 			this.diameter = addDoubleParameter()
 					.key( "DIAMETER" )
 					.name( "Diameter" )
+					.help( "<html>Estimated diameter of objects, in physical units "
+							+ "(stored in pixel size internally). " +
+							"Set to 0 to let Cellpose estimate it automatically.</html>" )
 					.units( units )
 					.defaultValue( 30. )
 					.min( 0. ) // But no max
@@ -137,7 +141,7 @@ public class Demo
 					.add( flowThreshold )
 					.add( cellprobThreshold )
 					.add( minSize )
-					.visible( false )
+					.collapsed( true )
 					.get();
 
 			/*
@@ -147,18 +151,21 @@ public class Demo
 			this.exportROIs = addFlag()
 					.key( "EXPORT_ROIS" )
 					.name( "Export ROIs" )
+					.help( "If set, ROIs will be computed from the labels output and added to the input image." )
 					.defaultValue( true )
 					.get();
 
 			this.exportLabels = addFlag()
 					.key( "EXPORT_LABELS" )
 					.name( "Export label image" )
+					.help( "If set, the label image will be shown." )
 					.defaultValue( false )
 					.get();
 
 			this.exportFlows = addFlag()
 					.key( "EXPORT_FLOWS" )
 					.name( "Export flows" )
+					.help( "If set, the Cellpose flows will be shown as a 3-channel image" )
 					.defaultValue( false )
 					.get();
 
@@ -166,7 +173,7 @@ public class Demo
 					.add( exportROIs )
 					.add( exportLabels )
 					.add( exportFlows )
-					.visible( true )
+					.collapsed( false )
 					.get();
 		}
 	}
