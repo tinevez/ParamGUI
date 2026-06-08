@@ -368,7 +368,7 @@ public class Parameters
 	 *            the type of value this parameter accepts.
 	 */
 	@SuppressWarnings( "unchecked" )
-	public static abstract class BoundedValueParameter< T extends BoundedValueParameter< T, O >, O > extends Parameter< T, O >
+	public static abstract class BoundedValueParameter< T extends BoundedValueParameter< T, O >, O extends Comparable< O > > extends Parameter< T, O >
 	{
 
 		private BoundedValueParameter()
@@ -377,6 +377,17 @@ public class Parameters
 		private O min;
 
 		private O max;
+
+		@Override
+		public void set( final O value )
+		{
+			if ( hasMax() && value.compareTo( max ) > 0 )
+				throw new IllegalArgumentException( "Value " + value + " is higher than the maximum of " + max + "." );
+			else if ( hasMin() && value.compareTo( min ) < 0 )
+				throw new IllegalArgumentException( "Value " + value + " is lower than the minimum of " + min + "." );
+			else
+				super.set( value );
+		}
 
 		T min( final O min )
 		{

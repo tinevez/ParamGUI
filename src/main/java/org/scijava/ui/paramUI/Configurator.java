@@ -399,7 +399,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	@SuppressWarnings( "unchecked" )
-	private abstract class BoundedAdder< A extends BoundedValueParameter< A, O >, T extends BoundedAdder< A, T, O >, O > extends ParamAdder< A, T, O >
+	private abstract class BoundedAdder< A extends BoundedValueParameter< A, O >, T extends BoundedAdder< A, T, O >, O extends Comparable< O > > extends ParamAdder< A, T, O >
 	{
 		protected O min;
 
