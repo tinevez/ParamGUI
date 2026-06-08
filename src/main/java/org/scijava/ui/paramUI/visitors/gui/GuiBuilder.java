@@ -16,11 +16,17 @@ import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.linkedT
 import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.listElement;
 import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.stringElement;
 
+import java.awt.Color;
+import java.awt.Component;
+import java.awt.Cursor;
+import java.awt.Desktop;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -48,10 +54,13 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
 import javax.swing.SwingConstants;
+import javax.swing.Timer;
+import javax.swing.ToolTipManager;
 
 import org.scijava.ui.paramUI.Configurator;
 import org.scijava.ui.paramUI.Configurator.SelectableParameters;
@@ -110,7 +119,7 @@ public class GuiBuilder implements ParameterVisitor
 		this.backwardUITranslators = config.getBackwardUITranslators();
 		this.panel = new ConfigPanel();
 		final GridBagLayout layout = new GridBagLayout();
-		layout.columnWeights = new double[] { 0., 1., 0. };
+		layout.columnWeights = new double[] { 0., 1., 0., 0. };
 		panel.setLayout( layout );
 		panel.setBorder( BorderFactory.createEmptyBorder( 5, 5, 5, 5 ) );
 		this.c = new GridBagConstraints();
@@ -373,6 +382,93 @@ public class GuiBuilder implements ParameterVisitor
 		gc = null;
 	}
 
+	private JComponent buildHelpCell( final String help )
+	{
+		if ( help == null || help.isBlank() )
+			return new JLabel();
+
+		final JButton b = new JButton( " ? " );
+		b.setBorderPainted( true );
+		b.setContentAreaFilled( false );
+		b.setFocusPainted( false );
+		b.setOpaque( false );
+		b.setBorder( BorderFactory.createLineBorder( Color.LIGHT_GRAY, 1, true ) );
+		b.setCursor( Cursor.getPredefinedCursor( Cursor.HAND_CURSOR ) );
+
+		if ( isLikelyUrl( help ) )
+		{
+			b.setToolTipText( "<html>Open help in browser: " + help + "</html>" );
+			b.addActionListener( e -> openInBrowser( help, b ) );
+		}
+		else
+		{
+			b.setToolTipText( help );
+			// Click to make the tooltip appear.
+			b.addMouseListener( new MouseAdapter()
+			{
+				@Override
+				public void mouseClicked( final MouseEvent e )
+				{
+					final JComponent c = ( JComponent ) e.getSource();
+					final ToolTipManager ttm = ToolTipManager.sharedInstance();
+
+					final int oldInit = ttm.getInitialDelay();
+					final int oldDismiss = ttm.getDismissDelay();
+
+					// Show immediately, hide after 3s.
+					ttm.setInitialDelay( 0 );
+					ttm.setDismissDelay( 3000 );
+
+					// Fake mouse-move at the click location to show the tooltip
+					final MouseEvent mv = new MouseEvent(
+							c, MouseEvent.MOUSE_MOVED, System.currentTimeMillis(),
+							0, e.getX(), e.getY(), 0, false );
+					ttm.mouseMoved( mv );
+
+					// Restore delays shortly after.
+					final Timer restore = new Timer( 0, ev -> {
+						ttm.setInitialDelay( oldInit );
+						ttm.setDismissDelay( oldDismiss );
+					} );
+					restore.setRepeats( false );
+					restore.start();
+				}
+			} );
+		}
+		return b;
+	}
+
+	private static boolean isLikelyUrl( final String s )
+	{
+		if ( s == null )
+			return false;
+		final String t = s.trim().toLowerCase();
+		return t.startsWith( "http://" ) || t.startsWith( "https://" ) || t.startsWith( "file:" );
+	}
+
+	private static void openInBrowser( final String url, final Component parent )
+	{
+		try
+		{
+			if ( Desktop.isDesktopSupported() )
+			{
+				Desktop.getDesktop().browse( new java.net.URI( url.trim() ) );
+			}
+			else
+			{
+				JOptionPane.showMessageDialog( parent,
+						"Desktop browsing not supported.\n" + url,
+						"Help", JOptionPane.INFORMATION_MESSAGE );
+			}
+		}
+		catch ( final Exception ex )
+		{
+			JOptionPane.showMessageDialog( parent,
+					"Could not open:\n" + url + "\n" + ex.getMessage(),
+					"Help", JOptionPane.ERROR_MESSAGE );
+		}
+	}
+
 	/*
 	 * UI STUFF.
 	 */
@@ -385,6 +481,7 @@ public class GuiBuilder implements ParameterVisitor
 		lbl.setText( lbl.getText() + " " );
 		lbl.setFont( SMALL_FONT );
 		comp.setFont( SMALL_FONT );
+
 		final JComponent item;
 		if ( panel.rdbtn != null )
 		{
@@ -401,13 +498,30 @@ public class GuiBuilder implements ParameterVisitor
 		{
 			item = lbl;
 		}
+
+		// First row: header spans columns 0-2
 		CC.insets = new Insets( 5, 0, 0, 0 );
+		CC.gridx = 0;
 		CC.gridwidth = 3;
 		target.add( item, CC );
-		CC.gridy++;
+
+		// Help icon at column 3 on the same row
+		final int savedGridY = CC.gridy;
+		CC.gridx = 3;
+		CC.gridwidth = 1;
+		CC.anchor = GridBagConstraints.LINE_END;
+		final JComponent helpCell = buildHelpCell( help );
+		target.add( helpCell, CC );
+
+		// Second row: component spans columns 0-2
+		CC.gridx = 0;
+		CC.gridy = savedGridY + 1;
+		CC.gridwidth = 3;
 		CC.anchor = GridBagConstraints.LINE_START;
 		CC.insets = new Insets( 0, 0, 5, 0 );
 		target.add( comp, CC );
+
+		// Advance
 		CC.gridy++;
 
 		if ( help != null )
@@ -457,13 +571,29 @@ public class GuiBuilder implements ParameterVisitor
 		p.add( Box.createHorizontalGlue() );
 		p.add( browseButton );
 
+		// First row: header panel spans columns 0-2
 		CC.insets = new Insets( topInset, 0, 0, 0 );
+		CC.gridx = 0;
 		CC.gridwidth = 3;
 		target.add( p, CC );
-		CC.gridy++;
+
+		// Help icon at column 3 on the same row
+		final int savedGridY = CC.gridy;
+		CC.gridx = 3;
+		CC.gridwidth = 1;
+		CC.anchor = GridBagConstraints.LINE_END;
+		final JComponent helpCell = buildHelpCell( help );
+		target.add( helpCell, CC );
+
+		// Second row: text field spans columns 0-2
+		CC.gridx = 0;
+		CC.gridy = savedGridY + 1;
+		CC.gridwidth = 3;
 		CC.anchor = GridBagConstraints.LINE_START;
 		CC.insets = new Insets( 0, 0, bottomInset, 0 );
 		target.add( tf, CC );
+
+		// Advance
 		CC.gridy++;
 
 		if ( help != null )
@@ -472,7 +602,6 @@ public class GuiBuilder implements ParameterVisitor
 			tf.setToolTipText( help );
 			browseButton.setToolTipText( help );
 		}
-
 	}
 
 	private void addToLayout( final String help, final JLabel lbl, final JComponent comp, final Parameter< ?, ? > arg )
@@ -502,15 +631,27 @@ public class GuiBuilder implements ParameterVisitor
 			header = lbl;
 		}
 
+		// Label/header at column 0
+		CC.gridx = 0;
 		CC.gridwidth = 1;
 		CC.anchor = GridBagConstraints.LINE_END;
 		target.add( header, CC );
 
+		// Component spans columns 1-2
 		CC.gridx++;
 		CC.gridwidth = 2;
 		CC.anchor = GridBagConstraints.LINE_START;
 		target.add( comp, CC );
 
+		// Help icon at column 3
+		CC.gridx++;
+		CC.gridx++;
+		CC.gridwidth = 1;
+		CC.anchor = GridBagConstraints.LINE_END;
+		final JComponent helpCell = buildHelpCell( help );
+		target.add( helpCell, CC );
+
+		// Advance row
 		CC.gridx = 0;
 		CC.gridy++;
 		CC.insets = new Insets( topInset, 0, bottomInset, 0 );
@@ -524,14 +665,14 @@ public class GuiBuilder implements ParameterVisitor
 
 	private void addToLayout( final String help, final JLabel lbl, final JComponent comp, final String units, final Parameter< ?, ? > arg )
 	{
-		final JPanel target = inGroup ? groupBody : panel;
-		final GridBagConstraints CC = inGroup ? gc : c;
-
 		if ( units == null )
 		{
 			addToLayout( help, lbl, comp, arg );
 			return;
 		}
+
+		final JPanel target = inGroup ? groupBody : panel;
+		final GridBagConstraints CC = inGroup ? gc : c;
 
 		lbl.setText( lbl.getText() + " " );
 		lbl.setFont( SMALL_FONT );
@@ -554,20 +695,31 @@ public class GuiBuilder implements ParameterVisitor
 			header = lbl;
 		}
 
+		// Label/header at column 0
 		CC.gridwidth = 1;
 		CC.anchor = GridBagConstraints.LINE_END;
 		target.add( header, CC );
 
+		// Component at column 1
 		CC.gridx++;
 		CC.anchor = GridBagConstraints.LINE_START;
 		target.add( comp, CC );
 
+		// Units at column 2
 		final JLabel lblUnits = new JLabel( " " + units );
 		lblUnits.setFont( SMALL_FONT );
 		CC.gridx++;
 		CC.insets = new Insets( topInset, 0, bottomInset, 0 );
 		target.add( lblUnits, CC );
 
+		// Help icon at column 3
+		CC.gridx++;
+		CC.gridwidth = 1;
+		CC.anchor = GridBagConstraints.LINE_END;
+		final JComponent helpCell = buildHelpCell( help );
+		target.add( helpCell, CC );
+
+		// Advance row
 		CC.gridx = 0;
 		CC.gridy++;
 
@@ -600,12 +752,22 @@ public class GuiBuilder implements ParameterVisitor
 			header = comp;
 		}
 
+		// Full-width content across columns 0-2
 		CC.gridx = 0;
 		CC.gridwidth = 3;
 		CC.fill = GridBagConstraints.HORIZONTAL;
 		CC.insets = new Insets( topInset, 0, bottomInset, 0 );
 		target.add( header, CC );
 
+		// Help icon at column 3 on the same row
+		final JComponent helpCell = buildHelpCell( help );
+		CC.gridx = 3;
+		CC.gridwidth = 1;
+		CC.fill = GridBagConstraints.NONE;
+		CC.anchor = GridBagConstraints.LINE_END;
+		target.add( helpCell, CC );
+
+		// Advance
 		CC.gridx = 0;
 		CC.gridy++;
 
@@ -691,7 +853,7 @@ public class GuiBuilder implements ParameterVisitor
 
 			// Open a collapsible section if we just entered a group
 			if ( it.groupEntered() && it.getCurrentGroup() != null )
-				builder.startGroup( it.getCurrentGroup().getName(), !it.getCurrentGroup().isVisible() );
+				builder.startGroup( it.getCurrentGroup().getName(), it.getCurrentGroup().isCollapsed() );
 
 			// Skip standalone duplicates of grouped parameters
 			if ( !it.inGroup() && paramsInAnyGroup.contains( arg ) )
