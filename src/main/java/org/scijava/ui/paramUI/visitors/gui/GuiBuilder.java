@@ -61,6 +61,7 @@ import javax.swing.JTextField;
 import javax.swing.SwingConstants;
 import javax.swing.Timer;
 import javax.swing.ToolTipManager;
+import javax.swing.border.Border;
 
 import org.scijava.ui.paramUI.Configurator;
 import org.scijava.ui.paramUI.Configurator.SelectableParameters;
@@ -408,7 +409,11 @@ public class GuiBuilder implements ParameterVisitor
 		b.setContentAreaFilled( false );
 		b.setFocusPainted( false );
 		b.setOpaque( false );
-		b.setBorder( BorderFactory.createLineBorder( Color.LIGHT_GRAY, 1, true ) );
+		b.setForeground( Color.LIGHT_GRAY );
+		final Border line = BorderFactory.createLineBorder( Color.LIGHT_GRAY, 1, true );
+		b.setBorder( BorderFactory.createCompoundBorder(
+				BorderFactory.createEmptyBorder( 0, 5, 0, 0 ), // left margin
+				line ) );
 		b.setCursor( Cursor.getPredefinedCursor( Cursor.HAND_CURSOR ) );
 
 		if ( isLikelyUrl( help ) )
