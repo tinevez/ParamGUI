@@ -1,9 +1,7 @@
 package org.scijava.ui.paramUI;
 
-import java.awt.event.WindowAdapter;
 import java.util.Map;
-
-import javax.swing.JFrame;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.scijava.ui.paramUI.Parameters.BooleanParam;
 import org.scijava.ui.paramUI.Parameters.DoubleParam;
@@ -12,8 +10,7 @@ import org.scijava.ui.paramUI.Parameters.IntParam;
 import org.scijava.ui.paramUI.Parameters.PathParam;
 import org.scijava.ui.paramUI.visitors.Maps;
 import org.scijava.ui.paramUI.visitors.Strings;
-import org.scijava.ui.paramUI.visitors.gui.GuiBuilder;
-import org.scijava.ui.paramUI.visitors.gui.GuiBuilder.ConfigPanel;
+import org.scijava.ui.paramUI.visitors.gui.FrameBuilder;
 
 /**
  * Demo with a UI that would configure Cellpose 3.
@@ -62,6 +59,7 @@ public class Demo
 			// File path.
 			this.customModel = addPathParameter()
 					.key( "CUSTOM_MODEL_PATH" )
+					.defaultValue( "" ) // Better than null.
 					.name( "Path to custom model" )
 					.help( "Path to a custom Cellpose 3 model. " )
 					.get();
@@ -70,7 +68,8 @@ public class Demo
 			this.builtinOrCustom = addSelectableParameters()
 					.key( "BUILTIN_OR_CUSTOM" )
 					.add( builtinModel )
-					.add( customModel );
+					.add( customModel )
+					.get();
 
 			// Channels, two int params.
 			this.chan1 = addIntParameter()
@@ -214,7 +213,7 @@ public class Demo
 		// Re-read the map into a new config.
 		final Cellpose3Config config2 = new Cellpose3Config( nChannels, pixelSize, units );
 		Maps.fromMap( map, config2 );
-		System.out.println(  );
+		System.out.println();
 		System.out.println( "------------------------------" );
 		System.out.println( "After modifying the map" );
 		System.out.println( "------------------------------" );
@@ -225,25 +224,75 @@ public class Demo
 		 * GUI
 		 */
 
-		final ConfigPanel panel = GuiBuilder.build( config2 );
-		final JFrame frame = new JFrame( config2.getName() );
-		frame.addWindowListener( new WindowAdapter()
+		final DummyRunner dummyRunner = new DummyRunner();
+		final Runnable onRun = () -> dummyRunner.run( config2 );
+		final Runnable onStop = () -> dummyRunner.cancel();
+
+		FrameBuilder.build( config2, onRun, onStop, new Cellpose3Config( nChannels, pixelSize, units ) ).setVisible( true );
+	}
+
+	private static class DummyRunner
+	{
+
+		private AtomicBoolean canceled = new AtomicBoolean( false );
+
+		private AtomicBoolean blocked = new AtomicBoolean( false );
+
+		private Thread thread;
+
+		public void run( final Cellpose3Config config )
 		{
-			@Override
-			public void windowClosing( final java.awt.event.WindowEvent e )
+			canceled.set( false );
+			blocked.set( false );
+			this.thread = new Thread( () -> {
+				System.out.println( "Running model " + config.builtinModel.getValue() );
+				try
+				{
+					int i = 20;
+					while ( !canceled.get() && i-- > 0 )
+					{
+						// Simulate doing some work.
+						Thread.sleep( 100 );
+						System.out.print( "." );
+
+						if ( blocked.get() )
+							i++; // Simulate that stopping takes more time.
+					}
+					System.out.println();
+				}
+				catch ( final InterruptedException e )
+				{
+					e.printStackTrace();
+				}
+				if ( canceled.get() )
+					System.out.println( "Model run canceled." );
+				else
+					System.out.println( "Model run done." );
+			} );
+			thread.start();
+			try
 			{
-				System.out.println();
-				System.out.println( "------------------------------" );
-				System.out.println( "After modifying with the UI" );
-				System.out.println( "------------------------------" );
-				System.out.println( Strings.echo( config2 ) );
-				System.out.println( "------------------------------" );
-				System.exit( 0 );
+				thread.join();
 			}
-		} );
-		frame.getContentPane().add( panel );
-		frame.pack();
-		frame.setLocationByPlatform( true );
-		frame.setVisible( true );
+			catch ( final InterruptedException e )
+			{
+				e.printStackTrace();
+			}
+		}
+
+		public void cancel()
+		{
+			blocked.set( true );
+			System.out.println( "Stopping will take 2s" );
+			try
+			{
+				Thread.sleep( 2000 );
+			}
+			catch ( final InterruptedException e )
+			{
+				e.printStackTrace();
+			}
+			canceled.set( true );
+		}
 	}
 }
