@@ -158,11 +158,9 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return a new {@link SelectableParameters} instance.
 	 */
-	protected SelectableParameters addSelectableParameters()
+	protected SelectableParamAdder addSelectableParameters()
 	{
-		final SelectableParameters sa = new SelectableParameters();
-		selectables.add( sa );
-		return sa;
+		return new SelectableParamAdder();
 	}
 
 	public static class SelectableParameters
@@ -170,21 +168,14 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 
 		private final List< Parameter< ?, ? > > params = new ArrayList<>();
 
-		private String key;
+		private final String key;
 
 		private int selected = 0;
 
-		public SelectableParameters add( final Parameter< ?, ? > arg )
-		{
-			if ( !params.contains( arg ) )
-				params.add( arg );
-			return this;
-		}
-
-		public SelectableParameters key( final String key )
+		private SelectableParameters( final String key, final List< Parameter< ?, ? > > params )
 		{
 			this.key = key;
-			return this;
+			this.params.addAll( params );
 		}
 
 		public String getKey()
@@ -318,6 +309,14 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		 */
 		public abstract A get();
 
+		/**
+		 * Basic consistency check for the builder.
+		 */
+		protected void check()
+		{
+			if ( key == null )
+				throw new IllegalArgumentException( "Parameter '" + name + "' must have a key." );
+		}
 	}
 
 	/**
@@ -487,6 +486,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		@Override
 		public BooleanParam get()
 		{
+			check();
 			final BooleanParam arg = new BooleanParam()
 					.name( name )
 					.help( help )
@@ -509,6 +509,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		@Override
 		public StringParam get()
 		{
+			check();
 			final StringParam arg = new StringParam()
 					.name( name )
 					.help( help )
@@ -531,6 +532,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		@Override
 		public PathParam get()
 		{
+			check();
 			final PathParam arg = new PathParam()
 					.name( name )
 					.help( help )
@@ -656,6 +658,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		@Override
 		public ChoiceParam get()
 		{
+			check();
 			final ChoiceParam arg = new ChoiceParam()
 					.name( name )
 					.help( help )
@@ -685,6 +688,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		@Override
 		public EnumParam< E > get()
 		{
+			check();
 			final EnumParam< E > arg = new EnumParam<>( enumClass )
 					.name( name )
 					.help( help )
@@ -695,6 +699,28 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 			Configurator.this.params.add( arg );
 			Configurator.this.orderedElements.add( arg );
 			return arg;
+		}
+	}
+	
+	protected class SelectableParamAdder extends Adder< SelectableParameters, SelectableParamAdder >
+	{
+
+		private final List< Parameter< ?, ? > > params = new ArrayList<>();
+
+		public < T extends Parameter< T, O >, O > SelectableParamAdder add( final T param )
+		{
+			if ( !params.contains( param ) )
+				params.add( param );
+			return this;
+		}
+
+		@Override
+		public SelectableParameters get()
+		{
+			check();
+			final SelectableParameters sp = new SelectableParameters( key, params );
+			selectables.add( sp );
+			return sp;
 		}
 	}
 
