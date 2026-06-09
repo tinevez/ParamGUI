@@ -1,5 +1,7 @@
 package org.scijava.ui.paramUI.visitors.gui;
 
+import static org.scijava.ui.paramUI.utils.GuiUtils.isLikelyUrl;
+import static org.scijava.ui.paramUI.utils.GuiUtils.openInBrowser;
 import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.SMALL_FONT;
 import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.booleanElement;
 import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.boundedDoubleElement;
@@ -17,9 +19,7 @@ import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.listEle
 import static org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.stringElement;
 
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.Cursor;
-import java.awt.Desktop;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
@@ -54,7 +54,6 @@ import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.JTextField;
@@ -90,6 +89,19 @@ import org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.ListElement;
 import org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.StringElement;
 import org.scijava.ui.paramUI.visitors.gui.elements.StyleElements.StyleElement;
 
+/**
+ * Creates a Swing {@link JPanel} that can edit the values of the parameters in
+ * a {@link Configurator}.
+ * <p>
+ * A UI element is added for each {@link Parameter}, in order of addition in the
+ * {@link Configurator}. Only parameters for which {@link Parameter#isVisible()}
+ * is <code>true</code> are included. Groups are supported: parameters in a
+ * group are added to a collapsible section with the group name as title.
+ * <p>
+ * The panel returned is actually a {@link ConfigPanel}, which is a subclass of
+ * JPanel that lets the caller refresh the UI from the current parameter values
+ * by calling {@link ConfigPanel#refresh()}.
+ */
 public class GuiBuilder implements ParameterVisitor
 {
 
@@ -463,37 +475,6 @@ public class GuiBuilder implements ParameterVisitor
 			} );
 		}
 		return b;
-	}
-
-	private static boolean isLikelyUrl( final String s )
-	{
-		if ( s == null )
-			return false;
-		final String t = s.trim().toLowerCase();
-		return t.startsWith( "http://" ) || t.startsWith( "https://" ) || t.startsWith( "file:" );
-	}
-
-	private static void openInBrowser( final String url, final Component parent )
-	{
-		try
-		{
-			if ( Desktop.isDesktopSupported() )
-			{
-				Desktop.getDesktop().browse( new java.net.URI( url.trim() ) );
-			}
-			else
-			{
-				JOptionPane.showMessageDialog( parent,
-						"Desktop browsing not supported.\n" + url,
-						"Help", JOptionPane.INFORMATION_MESSAGE );
-			}
-		}
-		catch ( final Exception ex )
-		{
-			JOptionPane.showMessageDialog( parent,
-					"Could not open:\n" + url + "\n" + ex.getMessage(),
-					"Help", JOptionPane.ERROR_MESSAGE );
-		}
 	}
 
 	/*
