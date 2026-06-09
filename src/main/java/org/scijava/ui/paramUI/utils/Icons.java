@@ -9,7 +9,7 @@ import javax.swing.UIManager;
 public class Icons
 {
 
-	public static int DEFAULT_ICON_SIZE = 32;
+	public static int DEFAULT_ICON_SIZE = 16;
 
 	public static final ImageIcon RELOAD = get( "cached" );
 
