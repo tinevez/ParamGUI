@@ -5,12 +5,14 @@ import static org.scijava.ui.paramUI.utils.GuiUtils.openInBrowser;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.BorderFactory;
@@ -19,9 +21,11 @@ import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.ScrollPaneConstants;
+import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 import org.scijava.prefs.DefaultPrefService;
@@ -45,9 +49,19 @@ import org.scijava.ui.paramUI.visitors.gui.GuiBuilder.ConfigPanel;
 public final class FrameBuilder< C extends Configurator >
 {
 
+	@FunctionalInterface
+	public interface ProgressTask
+	{
+		void run( ConfigFrame.Progress progress ) throws Exception;
+
+		default void cancel()
+		{ /* no-op by default */ }
+	}
+
+
 	protected final C config;
 
-	protected final Runnable onRun;
+	protected final ProgressTask onRunTask;
 
 	protected final Runnable onStore;
 
@@ -100,7 +114,7 @@ public final class FrameBuilder< C extends Configurator >
 	 */
 	protected FrameBuilder(
 			final C config,
-			final Runnable onRun,
+			final ProgressTask onRunTask,
 			final Runnable onStop,
 			final Runnable onStore,
 			final Runnable onReload,
@@ -108,7 +122,7 @@ public final class FrameBuilder< C extends Configurator >
 			final Runnable onDisplay )
 	{
 		this.config = config;
-		this.onRun = onRun;
+		this.onRunTask = onRunTask;
 		this.onStop = onStop;
 		this.onStore = onStore;
 		this.onReload = onReload;
@@ -119,13 +133,24 @@ public final class FrameBuilder< C extends Configurator >
 
 		frame.configPanel = GuiBuilder.build( config );
 		final JPanel buttonPanel = buttonPanel();
+		final JPanel south = new JPanel( new BorderLayout() );
+
+		frame.progressBar = new JProgressBar( 0, 1000 );
+		frame.progressBar.setStringPainted( true );
+		frame.progressBar.setBorder( BorderFactory.createEmptyBorder( 4, 8, 8, 8 ) );
+		frame.progressBar.setString( "" );
+		// remember default color so we can restore it later
+		frame.defaultProgressForeground = frame.progressBar.getForeground();
 
 		frame.setTitle( config.getName() );
 		frame.setDefaultCloseOperation( JFrame.DISPOSE_ON_CLOSE );
 		frame.setLayout( new BorderLayout() );
 
+		south.add( buttonPanel, BorderLayout.NORTH );
+		south.add( frame.progressBar, BorderLayout.CENTER );
+
 		frame.add( frame.configPanel, BorderLayout.CENTER );
-		frame.add( buttonPanel, BorderLayout.PAGE_END );
+		frame.add( south, BorderLayout.PAGE_END );
 
 		frame.pack();
 		frame.setLocationByPlatform( true );
@@ -142,7 +167,7 @@ public final class FrameBuilder< C extends Configurator >
 		row.setOpaque( false );
 
 		// Run and stop buttons
-		if ( onRun != null )
+		if ( onRunTask != null )
 		{
 			frame.btnRun = flatButton( Icons.PLAY, "Run the plugin", runner() );
 			frame.btnStop = flatButton( Icons.STOP, "Stop", stopper() );
@@ -201,7 +226,7 @@ public final class FrameBuilder< C extends Configurator >
 		return b;
 	}
 
-	private ActionListener stopper()
+	protected ActionListener stopper()
 	{
 		return new ActionListener()
 		{
@@ -211,6 +236,7 @@ public final class FrameBuilder< C extends Configurator >
 			{
 				if ( onStop != null )
 				{
+					frame.markCanceled( true );
 					new Thread( () -> {
 						try
 						{
@@ -250,11 +276,16 @@ public final class FrameBuilder< C extends Configurator >
 					frame.btnStop.setVisible( true );
 					frame.btnStop.setEnabled( true );
 				}
+				frame.markCanceled( false );
 				new Thread( () -> {
 					try
 					{
 						( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "STOP" );
-						onRun.run();
+						onRunTask.run( frame.getProgress() );
+					}
+					catch ( final Exception e1 )
+					{
+						e1.printStackTrace();
 					}
 					finally
 					{
@@ -322,17 +353,197 @@ public final class FrameBuilder< C extends Configurator >
 	public static class ConfigFrame extends JFrame
 	{
 
+		// Throttling parameters - 50 ms
+		private static final long PROGRESS_MIN_UPDATE_NANOS = 50_000_000L;
+
+		private static final double PROGRESS_MIN_DELTA = 0.01; // 1%
+
+		private long lastProgressUpdateNanos = 0L;
+
+		private double lastProgressValue = Double.NaN;
+
+		public Color defaultProgressForeground;
+
+		public JProgressBar progressBar;
+
 		public JPanel runStop;
 
 		private static final long serialVersionUID = 1L;
 
-		final EverythingDisablerAndReenabler disabler = new EverythingDisablerAndReenabler( this, new Class[] { JLabel.class } );
+		final EverythingDisablerAndReenabler disabler = new EverythingDisablerAndReenabler( this,
+				new Class[] { JLabel.class, JProgressBar.class } );
 
 		public ConfigPanel configPanel;
 
 		public JButton btnStop;
 
 		public JButton btnRun;
+
+		/**
+		 * Update progress (0..1). Throttled by time and value delta.
+		 * 
+		 * @param fraction
+		 */
+		public void setProgress( final double fraction )
+		{
+			setProgress( fraction, null );
+		}
+
+		public void setProgress( final double fraction, final String text )
+		{
+			final double f = Math.max( 0d, Math.min( 1d, fraction ) );
+			final long now = System.nanoTime();
+			final boolean largeJump = Double.isNaN( lastProgressValue )
+					|| Math.abs( f - lastProgressValue ) >= PROGRESS_MIN_DELTA
+					|| f == 0d || f == 1d;
+			final boolean timeOk = now - lastProgressUpdateNanos >= PROGRESS_MIN_UPDATE_NANOS;
+
+			if ( !( largeJump || timeOk ) )
+				return;
+
+			lastProgressValue = f;
+			lastProgressUpdateNanos = now;
+
+			SwingUtilities.invokeLater( () -> {
+				if ( progressBar.isIndeterminate() )
+					progressBar.setIndeterminate( false );
+				progressBar.setValue( ( int ) Math.round( f * progressBar.getMaximum() ) );
+				if ( text != null )
+					progressBar.setString( text );
+			} );
+		}
+
+		/**
+		 * Switch to/from indeterminate mode, optionally updating displayed
+		 * text.
+		 * 
+		 * @param indeterminate
+		 * @param text
+		 */
+		public void setProgressIndeterminate( final boolean indeterminate, final String text )
+		{
+			SwingUtilities.invokeLater( () -> {
+				progressBar.setIndeterminate( indeterminate );
+				if ( text != null )
+					progressBar.setString( text );
+			} );
+		}
+
+		/**
+		 * Clear progress and text; restore default color.
+		 */
+		public void clearProgress()
+		{
+			lastProgressValue = Double.NaN;
+			lastProgressUpdateNanos = 0L;
+			SwingUtilities.invokeLater( () -> {
+				progressBar.setIndeterminate( false );
+				progressBar.setValue( 0 );
+				progressBar.setString( null );
+				if ( defaultProgressForeground != null )
+					progressBar.setForeground( defaultProgressForeground );
+			} );
+		}
+
+		/**
+		 * Show a status message inside the progress bar (default color).
+		 * 
+		 * @param message
+		 */
+		public void setStatusMessage( final String message )
+		{
+			setStatusMessage( message, null );
+		}
+
+		/**
+		 * Show a status message with an optional custom color (applies to
+		 * bar/text depending on LAF).
+		 */
+		public void setStatusMessage( final String message, final Color color )
+		{
+			SwingUtilities.invokeLater( () -> {
+				progressBar.setString( message == null ? null : message );
+				if ( color != null )
+					progressBar.setForeground( color );
+				else if ( defaultProgressForeground != null )
+					progressBar.setForeground( defaultProgressForeground );
+			} );
+		}
+
+		public interface Progress
+		{
+			/** 0 to 1. */
+			void set( double fraction ); // 0..1
+
+			void set( double fraction, String text );
+
+			void indeterminate( boolean on, String text );
+
+			void message( String text );
+
+			void message( String text, Color color );
+
+			void clear();
+
+			boolean isCanceled();
+		}
+
+		private final AtomicBoolean canceled = new AtomicBoolean( false );
+
+		void markCanceled( final boolean v )
+		{
+			canceled.set( v );
+		}
+
+		private final Progress progress = new Progress()
+		{
+			@Override
+			public void set( final double f )
+			{
+				setProgress( f );
+			}
+
+			@Override
+			public void set( final double f, final String t )
+			{
+				setProgress( f, t );
+			}
+
+			@Override
+			public void indeterminate( final boolean on, final String t )
+			{
+				setProgressIndeterminate( on, t );
+			}
+
+			@Override
+			public void message( final String t )
+			{
+				setStatusMessage( t );
+			}
+
+			@Override
+			public void message( final String t, final java.awt.Color c )
+			{
+				setStatusMessage( t, c );
+			}
+
+			@Override
+			public void clear()
+			{
+				clearProgress();
+			}
+
+			@Override
+			public boolean isCanceled()
+			{
+				return canceled.get();
+			}
+		};
+
+		public Progress getProgress()
+		{
+			return progress;
+		}
 	}
 
 	/**
@@ -375,7 +586,7 @@ public final class FrameBuilder< C extends Configurator >
 	 */
 	public static < C extends Configurator > ConfigFrame build(
 			final C config,
-			final Runnable onRun,
+			final ProgressTask onRun,
 			final Runnable onStop,
 			final Runnable onStore,
 			final Runnable onReload,
@@ -387,7 +598,7 @@ public final class FrameBuilder< C extends Configurator >
 
 	public static < C extends Configurator > ConfigFrame build(
 			final C config,
-			final Runnable onRun,
+			final ProgressTask onRun,
 			final Runnable onStop,
 			final C defaultValues )
 	{

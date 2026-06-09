@@ -1,5 +1,6 @@
 package org.scijava.ui.paramUI;
 
+import java.awt.Color;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -11,6 +12,9 @@ import org.scijava.ui.paramUI.Parameters.PathParam;
 import org.scijava.ui.paramUI.visitors.Maps;
 import org.scijava.ui.paramUI.visitors.Strings;
 import org.scijava.ui.paramUI.visitors.gui.FrameBuilder;
+import org.scijava.ui.paramUI.visitors.gui.FrameBuilder.ConfigFrame;
+import org.scijava.ui.paramUI.visitors.gui.FrameBuilder.ConfigFrame.Progress;
+import org.scijava.ui.paramUI.visitors.gui.FrameBuilder.ProgressTask;
 
 /**
  * Demo with a UI that would configure Cellpose 3.
@@ -224,50 +228,57 @@ public class Demo
 		 * GUI
 		 */
 
-		final DummyRunner dummyRunner = new DummyRunner();
-		final Runnable onRun = () -> dummyRunner.run( config2 );
+		final DummyRunner dummyRunner = new DummyRunner( config2 );
 		final Runnable onStop = () -> dummyRunner.cancel();
+		final Configurator defaultValues = new Cellpose3Config( nChannels, pixelSize, units );
 
-		FrameBuilder.build( config2, onRun, onStop, new Cellpose3Config( nChannels, pixelSize, units ) ).setVisible( true );
+		final ConfigFrame frame = FrameBuilder.build( config2, dummyRunner, onStop, defaultValues );
+
+		frame.setVisible( true );
 	}
 
-	private static class DummyRunner
+	private static class DummyRunner implements ProgressTask
 	{
-
-		private AtomicBoolean canceled = new AtomicBoolean( false );
 
 		private AtomicBoolean blocked = new AtomicBoolean( false );
 
 		private Thread thread;
 
-		public void run( final Cellpose3Config config )
+		private final Cellpose3Config config;
+
+		public DummyRunner( final Cellpose3Config config )
 		{
-			canceled.set( false );
+			this.config = config;
+		}
+
+		@Override
+		public void run( final Progress p ) throws Exception
+		{
 			blocked.set( false );
+			p.indeterminate( true, "Preparing..." );
 			this.thread = new Thread( () -> {
-				System.out.println( "Running model " + config.builtinModel.getValue() );
 				try
 				{
 					int i = 20;
-					while ( !canceled.get() && i-- > 0 )
+					while ( !p.isCanceled() && i-- > 0 )
 					{
 						// Simulate doing some work.
 						Thread.sleep( 100 );
-						System.out.print( "." );
+
+						p.set( ( 20 - i ) / 20., "Running..." );
 
 						if ( blocked.get() )
 							i++; // Simulate that stopping takes more time.
 					}
-					System.out.println();
 				}
 				catch ( final InterruptedException e )
 				{
 					e.printStackTrace();
 				}
-				if ( canceled.get() )
-					System.out.println( "Model run canceled." );
+				if ( p.isCanceled() )
+					p.message( "Model run canceled.", Color.ORANGE );
 				else
-					System.out.println( "Model run done." );
+					p.message( "Model run finished." );
 			} );
 			thread.start();
 			try
@@ -292,7 +303,7 @@ public class Demo
 			{
 				e.printStackTrace();
 			}
-			canceled.set( true );
+//			canceled.set( true );
 		}
 	}
 }
