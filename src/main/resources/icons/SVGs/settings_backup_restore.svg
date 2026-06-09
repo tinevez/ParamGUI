@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Calque_1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" viewBox="0 0 21.9 22">
+  <!-- Generator: Adobe Illustrator 29.3.1, SVG Export Plug-In . SVG Version: 2.1.0 Build 151)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: none;
+      }
+
+      .st1 {
+        fill: #1d1d1d;
+        fill-rule: evenodd;
+      }
+    </style>
+  </defs>
+  <g id="Icons">
+    <g id="Outlined">
+      <g id="Action">
+        <g id="Outlined-_x2F_-Action-_x2F_-settings_x5F_backup_x5F_restore">
+          <g>
+            <polygon id="Path" class="st0" points=".5 -1 24.5 -1 24.5 23 .5 23 .5 -1"/>
+            <path id="_xD83D__xDD39_-Icon-Color" class="st1" d="M14.5,11c0-1.1-.9-2-2-2s-2,.9-2,2,.9,2,2,2,2-.9,2-2ZM12.5,2C7.5,2,3.5,6,3.5,11H.5l4,4,4-4h-3c0-3.9,3.1-7,7-7s7,3.1,7,7-3.1,7-7,7-2.9-.5-4.1-1.3l-1.4,1.4c1.5,1.2,3.4,1.9,5.5,1.9,5,0,9-4,9-9S17.4,2,12.5,2Z"/>
+          </g>
+        </g>
+      </g>
+    </g>
+  </g>
+</svg>
