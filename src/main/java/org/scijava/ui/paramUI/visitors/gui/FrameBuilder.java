@@ -8,7 +8,6 @@ import java.awt.CardLayout;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
-import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.util.HashMap;
 import java.util.Map;
@@ -36,94 +35,37 @@ import org.scijava.ui.paramUI.visitors.Maps;
 import org.scijava.ui.paramUI.visitors.Strings;
 import org.scijava.ui.paramUI.visitors.gui.GuiBuilder.ConfigPanel;
 
-/**
- * Mother class for building frames for Configurators. Builds a {@link JFrame}
- * with a UI that can configure the parameters in a Configurator.
- * <p>
- * The frame shows a config panel (created by {@link ConfigPanel}) and various
- * buttons to interact with the config or an action that is parameterized by the
- * config.
- * <p>
- * Can be subclassed to change the default callbacks for the buttons.
- */
 public final class FrameBuilder< C extends Configurator >
 {
-
 	@FunctionalInterface
-	public interface ProgressTask
+	public interface UserTask
 	{
 		void run( ConfigFrame.Progress progress ) throws Exception;
 
 		default void cancel()
-		{ /* no-op by default */ }
+		{}
 	}
 
-
 	protected final C config;
-
-	protected final ProgressTask onRunTask;
-
+	protected final UserTask task;
 	protected final Runnable onStore;
-
 	protected final Runnable onReload;
-
 	protected final Runnable onReset;
-
 	protected final Runnable onDisplay;
-
-	protected final Runnable onStop;
-
 	protected final ConfigFrame frame;
 
-	/**
-	 * Base constructor for FrameBuilder.
-	 * 
-	 * @param config
-	 *            the config to build the frame for. This object will be
-	 *            modified by the UI created by this FrameBuilder. If it has a
-	 *            non-empty help string, a help button will be shown in the
-	 *            frame.
-	 * @param onRun
-	 *            callback for the "Run" button. If <code>null</code> the button
-	 *            will not be shown. This callback will be run in a separate
-	 *            thread, and the UI will be disabled until it finished or is
-	 *            stopped.
-	 * @param onStop
-	 *            callback for the "Stop" button. If not <code>null</code>,
-	 *            after the user pressed the play button (which must be not
-	 *            <code>null</code> as well), the "Run" button will be replaced
-	 *            by a "Stop" button, which triggers this callback when pressed.
-	 *            If <code>null</code>, no "Stop" button will be shown and the
-	 *            "Run" button will remain as is.
-	 * @param onStore
-	 *            callback for the "Store" button, that serializes the current
-	 *            config in the persistence system. If <code>null</code> the
-	 *            button will not be shown.
-	 * @param onReload
-	 *            callback for the "Reload" button, that reloads the config from
-	 *            the persistence system, overwriting any unsaved changes. If
-	 *            <code>null</code> the button will not be shown.
-	 * @param onReset
-	 *            callback for the "Reset to default" button, that resets the
-	 *            config to the default values. If <code>null</code> the button
-	 *            will not be shown.
-	 * @param onDisplay
-	 *            callback for the "Display" button, that display the current
-	 *            config in a human-readable form (e.g. in the console or a
-	 *            popup). If <code>null</code> the button will not be shown.
-	 */
+	private volatile Thread runThread;
+
 	protected FrameBuilder(
 			final C config,
-			final ProgressTask onRunTask,
-			final Runnable onStop,
+			final UserTask task,
 			final Runnable onStore,
 			final Runnable onReload,
 			final Runnable onReset,
 			final Runnable onDisplay )
 	{
 		this.config = config;
-		this.onRunTask = onRunTask;
-		this.onStop = onStop;
+		this.task = task;
 		this.onStore = onStore;
 		this.onReload = onReload;
 		this.onReset = onReset;
@@ -133,23 +75,24 @@ public final class FrameBuilder< C extends Configurator >
 
 		frame.configPanel = GuiBuilder.build( config );
 		final JPanel buttonPanel = buttonPanel();
-		final JPanel south = new JPanel( new BorderLayout() );
-
-		frame.progressBar = new JProgressBar( 0, 1000 );
-		frame.progressBar.setStringPainted( true );
-		frame.progressBar.setBorder( BorderFactory.createEmptyBorder( 4, 8, 8, 8 ) );
-		frame.progressBar.setString( "" );
-		// remember default color so we can restore it later
-		frame.defaultProgressForeground = frame.progressBar.getForeground();
 
 		frame.setTitle( config.getName() );
 		frame.setDefaultCloseOperation( JFrame.DISPOSE_ON_CLOSE );
 		frame.setLayout( new BorderLayout() );
 
+		frame.add( frame.configPanel, BorderLayout.CENTER );
+
+		final JPanel south = new JPanel( new BorderLayout() );
 		south.add( buttonPanel, BorderLayout.NORTH );
+
+		frame.progressBar = new JProgressBar( 0, 1000 );
+		frame.progressBar.setStringPainted( true );
+		frame.progressBar.setString( "" );
+		frame.progressBar.putClientProperty( "JComponent.sizeVariant", "large" );
+		frame.progressBar.setBorder( BorderFactory.createEmptyBorder( 4, 8, 8, 8 ) );
+		frame.defaultProgressForeground = frame.progressBar.getForeground();
 		south.add( frame.progressBar, BorderLayout.CENTER );
 
-		frame.add( frame.configPanel, BorderLayout.CENTER );
 		frame.add( south, BorderLayout.PAGE_END );
 
 		frame.pack();
@@ -166,8 +109,7 @@ public final class FrameBuilder< C extends Configurator >
 		final JPanel row = new JPanel( new GridLayout( 1, 0, 0, 0 ) );
 		row.setOpaque( false );
 
-		// Run and stop buttons
-		if ( onRunTask != null )
+		if ( task != null )
 		{
 			frame.btnRun = flatButton( Icons.PLAY, "Run the plugin", runner() );
 			frame.btnStop = flatButton( Icons.STOP, "Stop", stopper() );
@@ -179,31 +121,30 @@ public final class FrameBuilder< C extends Configurator >
 			row.add( frame.runStop );
 		}
 
-		// Store, reload and reset buttons
 		if ( onStore != null )
 		{
 			final JButton btnStore = flatButton( Icons.STORE, "Store the current configuration", e -> onStore.run() );
 			row.add( btnStore );
 		}
+
 		if ( onReload != null )
 		{
 			final JButton btnReload = flatButton( Icons.RELOAD, "Reload the configuration", e -> onReload.run() );
 			row.add( btnReload );
 		}
+
 		if ( onReset != null )
 		{
 			final JButton btnReset = flatButton( Icons.RESET, "Reset to default values", e -> onReset.run() );
 			row.add( btnReset );
 		}
 
-		// Display button
 		if ( onDisplay != null )
 		{
 			final JButton btnDisplay = flatButton( Icons.COMMENT, "Display the current configuration", e -> onDisplay.run() );
 			row.add( btnDisplay );
 		}
 
-		// Help text or link
 		final String help = config.getHelp();
 		if ( help != null && !help.trim().isEmpty() )
 		{
@@ -221,83 +162,89 @@ public final class FrameBuilder< C extends Configurator >
 			b.setToolTipText( tip );
 		if ( al != null )
 			b.addActionListener( al );
-		b.setText( null ); // icon-only
+		b.setText( null );
 		b.putClientProperty( "JButton.buttonType", "toolBarButton" );
 		return b;
 	}
 
-	protected ActionListener stopper()
+	private ActionListener stopper()
 	{
-		return new ActionListener()
-		{
-
-			@Override
-			public void actionPerformed( final ActionEvent e )
+		return e -> {
+			frame.markCanceled( true );
+			if ( task != null )
 			{
-				if ( onStop != null )
+				try
 				{
-					frame.markCanceled( true );
-					new Thread( () -> {
-						try
-						{
-							frame.btnStop.setEnabled( false );
-							onStop.run();
-						}
-						finally
-						{
-							if ( frame.disabler.disableHasBeenCalled() )
-								frame.disabler.reenable();
-							frame.btnStop.setEnabled( true );
-							frame.btnRun.setVisible( true );
-							frame.btnStop.setVisible( false );
-							( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "RUN" );
-						}
-					}, "FrameBuilderOnStopThread" ).start();
+					task.cancel();
+				}
+				catch ( final Throwable t )
+				{
+					t.printStackTrace();
 				}
 			}
+			final Thread t = runThread;
+			if ( t != null )
+				t.interrupt();
+			frame.btnStop.setEnabled( false );
 		};
 	}
 
-	/**
-	 * Creates an ActionListener for the "Run" button.
-	 */
 	protected ActionListener runner()
 	{
-		return new ActionListener()
-		{
-
-			@Override
-			public void actionPerformed( final ActionEvent e )
+		return e -> {
+			frame.disabler.disable();
+			frame.btnRun.setVisible( false );
+			if ( frame.btnStop != null )
 			{
-				frame.disabler.disable();
-				frame.btnRun.setVisible( false );
-				if ( frame.btnStop != null )
+				frame.btnStop.setVisible( true );
+				frame.btnStop.setEnabled( true );
+			}
+
+			final Thread t = new Thread( () -> {
+				Throwable error = null;
+				try
 				{
-					frame.btnStop.setVisible( true );
-					frame.btnStop.setEnabled( true );
+					( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "STOP" );
+					frame.markCanceled( false );
+					if ( task != null )
+						task.run( frame.getProgress() );
 				}
-				frame.markCanceled( false );
-				new Thread( () -> {
-					try
-					{
-						( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "STOP" );
-						onRunTask.run( frame.getProgress() );
-					}
-					catch ( final Exception e1 )
-					{
-						e1.printStackTrace();
-					}
-					finally
-					{
+				catch ( final Throwable ex )
+				{
+					error = ex;
+				}
+				finally
+				{
+					final Throwable err = error;
+					SwingUtilities.invokeLater( () -> {
+						if ( frame.isCanceled() )
+						{
+							frame.progressBar.setString( "Canceled" );
+						}
+						else if ( err != null )
+						{
+							frame.progressBar.setString( "Failed: " + err.getMessage() );
+							err.printStackTrace();
+						}
+						else
+						{
+							frame.progressBar.setString( "Done" );
+							frame.progressBar.setIndeterminate( false );
+							frame.progressBar.setValue( frame.progressBar.getMaximum() );
+							frame.progressBar.setForeground( frame.defaultProgressForeground );
+						}
 						( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "RUN" );
 						frame.btnRun.setVisible( true );
 						if ( frame.btnStop != null )
 							frame.btnStop.setVisible( false );
 						if ( frame.disabler.disableHasBeenCalled() )
 							frame.disabler.reenable();
-					}
-				}, "FrameBuilderOnRunThread" ).start();
-			}
+					} );
+					runThread = null;
+				}
+			}, "FrameBuilderOnRunThread" );
+			runThread = t;
+			t.start();
 		};
 	}
 
@@ -314,7 +261,6 @@ public final class FrameBuilder< C extends Configurator >
 
 	protected void showHelpText( final String helpText )
 	{
-		// Plain text, wrapped, scrollable as needed
 		final JTextArea ta = new JTextArea( helpText, 5, 40 );
 		ta.setEditable( false );
 		ta.setLineWrap( true );
@@ -331,7 +277,6 @@ public final class FrameBuilder< C extends Configurator >
 		sp.getViewport().setOpaque( false );
 		sp.setOpaque( false );
 
-		// Cap preferred height; width will follow container
 		ta.setSize( new Dimension( 420, Integer.MAX_VALUE ) );
 		final Dimension pref = ta.getPreferredSize();
 		final int maxHeight = 180;
@@ -352,128 +297,9 @@ public final class FrameBuilder< C extends Configurator >
 
 	public static class ConfigFrame extends JFrame
 	{
-
-		// Throttling parameters - 50 ms
-		private static final long PROGRESS_MIN_UPDATE_NANOS = 50_000_000L;
-
-		private static final double PROGRESS_MIN_DELTA = 0.01; // 1%
-
-		private long lastProgressUpdateNanos = 0L;
-
-		private double lastProgressValue = Double.NaN;
-
-		public Color defaultProgressForeground;
-
-		public JProgressBar progressBar;
-
-		public JPanel runStop;
-
-		private static final long serialVersionUID = 1L;
-
-		final EverythingDisablerAndReenabler disabler = new EverythingDisablerAndReenabler( this,
-				new Class[] { JLabel.class, JProgressBar.class } );
-
-		public ConfigPanel configPanel;
-
-		public JButton btnStop;
-
-		public JButton btnRun;
-
-		/**
-		 * Update progress (0..1). Throttled by time and value delta.
-		 * 
-		 * @param fraction
-		 */
-		public void setProgress( final double fraction )
-		{
-			setProgress( fraction, null );
-		}
-
-		public void setProgress( final double fraction, final String text )
-		{
-			final double f = Math.max( 0d, Math.min( 1d, fraction ) );
-			final long now = System.nanoTime();
-			final boolean largeJump = Double.isNaN( lastProgressValue )
-					|| Math.abs( f - lastProgressValue ) >= PROGRESS_MIN_DELTA
-					|| f == 0d || f == 1d;
-			final boolean timeOk = now - lastProgressUpdateNanos >= PROGRESS_MIN_UPDATE_NANOS;
-
-			if ( !( largeJump || timeOk ) )
-				return;
-
-			lastProgressValue = f;
-			lastProgressUpdateNanos = now;
-
-			SwingUtilities.invokeLater( () -> {
-				if ( progressBar.isIndeterminate() )
-					progressBar.setIndeterminate( false );
-				progressBar.setValue( ( int ) Math.round( f * progressBar.getMaximum() ) );
-				if ( text != null )
-					progressBar.setString( text );
-			} );
-		}
-
-		/**
-		 * Switch to/from indeterminate mode, optionally updating displayed
-		 * text.
-		 * 
-		 * @param indeterminate
-		 * @param text
-		 */
-		public void setProgressIndeterminate( final boolean indeterminate, final String text )
-		{
-			SwingUtilities.invokeLater( () -> {
-				progressBar.setIndeterminate( indeterminate );
-				if ( text != null )
-					progressBar.setString( text );
-			} );
-		}
-
-		/**
-		 * Clear progress and text; restore default color.
-		 */
-		public void clearProgress()
-		{
-			lastProgressValue = Double.NaN;
-			lastProgressUpdateNanos = 0L;
-			SwingUtilities.invokeLater( () -> {
-				progressBar.setIndeterminate( false );
-				progressBar.setValue( 0 );
-				progressBar.setString( null );
-				if ( defaultProgressForeground != null )
-					progressBar.setForeground( defaultProgressForeground );
-			} );
-		}
-
-		/**
-		 * Show a status message inside the progress bar (default color).
-		 * 
-		 * @param message
-		 */
-		public void setStatusMessage( final String message )
-		{
-			setStatusMessage( message, null );
-		}
-
-		/**
-		 * Show a status message with an optional custom color (applies to
-		 * bar/text depending on LAF).
-		 */
-		public void setStatusMessage( final String message, final Color color )
-		{
-			SwingUtilities.invokeLater( () -> {
-				progressBar.setString( message == null ? null : message );
-				if ( color != null )
-					progressBar.setForeground( color );
-				else if ( defaultProgressForeground != null )
-					progressBar.setForeground( defaultProgressForeground );
-			} );
-		}
-
 		public interface Progress
 		{
-			/** 0 to 1. */
-			void set( double fraction ); // 0..1
+			void set( double fraction );
 
 			void set( double fraction, String text );
 
@@ -488,12 +314,17 @@ public final class FrameBuilder< C extends Configurator >
 			boolean isCanceled();
 		}
 
-		private final AtomicBoolean canceled = new AtomicBoolean( false );
+		public JPanel runStop;
+		private static final long serialVersionUID = 1L;
 
-		void markCanceled( final boolean v )
-		{
-			canceled.set( v );
-		}
+		final EverythingDisablerAndReenabler disabler = new EverythingDisablerAndReenabler( this, new Class[] { JLabel.class, JProgressBar.class } );
+		public ConfigPanel configPanel;
+		public JButton btnStop;
+		public JButton btnRun;
+		public JProgressBar progressBar;
+		public Color defaultProgressForeground;
+
+		private final AtomicBoolean canceled = new AtomicBoolean( false );
 
 		private final Progress progress = new Progress()
 		{
@@ -522,7 +353,7 @@ public final class FrameBuilder< C extends Configurator >
 			}
 
 			@Override
-			public void message( final String t, final java.awt.Color c )
+			public void message( final String t, final Color c )
 			{
 				setStatusMessage( t, c );
 			}
@@ -540,75 +371,113 @@ public final class FrameBuilder< C extends Configurator >
 			}
 		};
 
+		private static final long PROGRESS_MIN_UPDATE_NANOS = 50_000_000L;
+
+		private static final double PROGRESS_MIN_DELTA = 0.01;
+
+		private long lastProgressUpdateNanos = 0L;
+
+		private double lastProgressValue = Double.NaN;
+
 		public Progress getProgress()
 		{
 			return progress;
 		}
+
+		void markCanceled( final boolean v )
+		{
+			canceled.set( v );
+		}
+
+		boolean isCanceled()
+		{
+			return canceled.get();
+		}
+
+		public void setProgress( final double fraction )
+		{
+			setProgress( fraction, null );
+		}
+
+		public void setProgress( final double fraction, final String text )
+		{
+			final double f = Math.max( 0d, Math.min( 1d, fraction ) );
+			final long now = System.nanoTime();
+			final boolean largeJump = Double.isNaN( lastProgressValue ) || Math.abs( f - lastProgressValue ) >= PROGRESS_MIN_DELTA || f == 0d || f == 1d;
+			final boolean timeOk = now - lastProgressUpdateNanos >= PROGRESS_MIN_UPDATE_NANOS;
+			if ( !( largeJump || timeOk ) )
+				return;
+			lastProgressValue = f;
+			lastProgressUpdateNanos = now;
+			SwingUtilities.invokeLater( () -> {
+				if ( progressBar.isIndeterminate() )
+					progressBar.setIndeterminate( false );
+				progressBar.setValue( ( int ) Math.round( f * progressBar.getMaximum() ) );
+				if ( text != null )
+					progressBar.setString( text );
+			} );
+		}
+
+		public void setProgressIndeterminate( final boolean indeterminate, final String text )
+		{
+			SwingUtilities.invokeLater( () -> {
+				progressBar.setIndeterminate( indeterminate );
+				if ( text != null )
+					progressBar.setString( text );
+			} );
+		}
+
+		public void clearProgress()
+		{
+			lastProgressValue = Double.NaN;
+			lastProgressUpdateNanos = 0L;
+			SwingUtilities.invokeLater( () -> {
+				progressBar.setIndeterminate( false );
+				progressBar.setValue( 0 );
+				progressBar.setString( null );
+				if ( defaultProgressForeground != null )
+					progressBar.setForeground( defaultProgressForeground );
+			} );
+		}
+
+		public void setStatusMessage( final String message )
+		{
+			setStatusMessage( message, null );
+		}
+
+		public void setStatusMessage( final String message, final Color color )
+		{
+			SwingUtilities.invokeLater( () -> {
+				progressBar.setString( message == null ? null : message );
+				if ( color != null )
+					progressBar.setForeground( color );
+				else if ( defaultProgressForeground != null )
+					progressBar.setForeground( defaultProgressForeground );
+			} );
+		}
 	}
 
-	/**
-	 * Default build for a FrameBuilder specifying all the callbacks.
-	 * 
-	 * @param config
-	 *            the config to build the frame for. This object will be
-	 *            modified by the UI created by this FrameBuilder. If it has a
-	 *            non-empty help string, a help button will be shown in the
-	 *            frame.
-	 * @param onRun
-	 *            callback for the "Run" button. If <code>null</code> the button
-	 *            will not be shown. This callback will be run in a separate
-	 *            thread, and the UI will be disabled until it finished or is
-	 *            stopped.
-	 * @param onStop
-	 *            callback for the "Stop" button. If not <code>null</code>,
-	 *            after the user pressed the play button (which must be not
-	 *            <code>null</code> as well), the "Run" button will be replaced
-	 *            by a "Stop" button, which triggers this callback when pressed.
-	 *            If <code>null</code>, no "Stop" button will be shown and the
-	 *            "Run" button will remain as is.
-	 * @param onStore
-	 *            callback for the "Store" button, that serializes the current
-	 *            config in the persistence system. If <code>null</code> the
-	 *            button will not be shown.
-	 * @param onReload
-	 *            callback for the "Reload" button, that reloads the config from
-	 *            the persistence system, overwriting any unsaved changes. If
-	 *            <code>null</code> the button will not be shown.
-	 * @param onReset
-	 *            callback for the "Reset to default" button, that resets the
-	 *            config to the default values. If <code>null</code> the button
-	 *            will not be shown.
-	 * @param onDisplay
-	 *            callback for the "Display" button, that display the current
-	 *            config in a human-readable form (e.g. in the console or a
-	 *            popup). If <code>null</code> the button will not be shown.
-	 * @return a new ConfigFrame with the specified config and callbacks.
-	 */
 	public static < C extends Configurator > ConfigFrame build(
 			final C config,
-			final ProgressTask onRun,
-			final Runnable onStop,
+			final UserTask task,
 			final Runnable onStore,
 			final Runnable onReload,
 			final Runnable onReset,
 			final Runnable onDisplay )
 	{
-		return new FrameBuilder<>( config, onRun, onStop, onStore, onReload, onReset, onDisplay ).get();
+		return new FrameBuilder<>( config, task, onStore, onReload, onReset, onDisplay ).get();
 	}
 
 	public static < C extends Configurator > ConfigFrame build(
 			final C config,
-			final ProgressTask onRun,
-			final Runnable onStop,
+			final UserTask task,
 			final C defaultValues )
 	{
-		// Work around referencing the config panel for refresh.
 		final AtomicReference< ConfigPanel > ref = new AtomicReference<>();
 		final Runnable refresh = () -> ref.get().refresh();
 		final ConfigFrame frame = build(
 				config,
-				onRun,
-				onStop,
+				task,
 				() -> defaultStore( config ),
 				() -> defaultReload( config, refresh ),
 				() -> defaultReset( config, defaultValues, refresh ),
@@ -633,7 +502,6 @@ public final class FrameBuilder< C extends Configurator >
 	{
 		final DefaultPrefService prefs = new DefaultPrefService();
 		Maps.toMap( config ).forEach( ( k, v ) -> {
-			// Switch according to v type.
 			final Class< ? extends Object > valClass = v.getClass();
 			if ( Double.class.isAssignableFrom( valClass ) || Float.class.isAssignableFrom( valClass ) )
 			{
@@ -653,7 +521,6 @@ public final class FrameBuilder< C extends Configurator >
 			}
 			else if ( Enum.class.isAssignableFrom( valClass ) )
 			{
-				// Store the name of the enum constant.
 				prefs.put( config.getClass(), k, ( ( Enum< ? > ) v ).name() );
 			}
 		} );
@@ -662,11 +529,8 @@ public final class FrameBuilder< C extends Configurator >
 	private static < C extends Configurator > void defaultReload( final C config, final Runnable refresh )
 	{
 		final DefaultPrefService prefs = new DefaultPrefService();
-		// Map that will be deserialized to.
 		final Map< String, Object > map = new HashMap<>();
-		// Loop over param we know of.
 		Maps.toMap( config ).forEach( ( k, v ) -> {
-			// Switch according to v type.
 			final Class< ? extends Object > valClass = v.getClass();
 			if ( Double.class.isAssignableFrom( valClass ) || Float.class.isAssignableFrom( valClass ) )
 			{
@@ -704,9 +568,7 @@ public final class FrameBuilder< C extends Configurator >
 				System.err.println( "Don't know how to reload parameter " + k + " of type " + valClass.getName() );
 			}
 		} );
-		// Apply deserialized values to config.
 		Maps.fromMap( map, config );
-		// Refresh UI to reflect any changes.
 		refresh.run();
 	}
 }

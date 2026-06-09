@@ -1,6 +1,5 @@
 package org.scijava.ui.paramUI;
 
-import java.awt.Color;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -14,7 +13,7 @@ import org.scijava.ui.paramUI.visitors.Strings;
 import org.scijava.ui.paramUI.visitors.gui.FrameBuilder;
 import org.scijava.ui.paramUI.visitors.gui.FrameBuilder.ConfigFrame;
 import org.scijava.ui.paramUI.visitors.gui.FrameBuilder.ConfigFrame.Progress;
-import org.scijava.ui.paramUI.visitors.gui.FrameBuilder.ProgressTask;
+import org.scijava.ui.paramUI.visitors.gui.FrameBuilder.UserTask;
 
 /**
  * Demo with a UI that would configure Cellpose 3.
@@ -229,22 +228,19 @@ public class Demo
 		 */
 
 		final DummyRunner dummyRunner = new DummyRunner( config2 );
-		final Runnable onStop = () -> dummyRunner.cancel();
 		final Configurator defaultValues = new Cellpose3Config( nChannels, pixelSize, units );
 
-		final ConfigFrame frame = FrameBuilder.build( config2, dummyRunner, onStop, defaultValues );
+		final ConfigFrame frame = FrameBuilder.build( config2, dummyRunner, defaultValues );
 
 		frame.setVisible( true );
 	}
 
-	private static class DummyRunner implements ProgressTask
+	private static class DummyRunner implements UserTask
 	{
 
-		private AtomicBoolean blocked = new AtomicBoolean( false );
-
-		private Thread thread;
-
 		private final Cellpose3Config config;
+
+		private final AtomicBoolean cancelRequested = new AtomicBoolean( false );
 
 		public DummyRunner( final Cellpose3Config config )
 		{
@@ -254,56 +250,27 @@ public class Demo
 		@Override
 		public void run( final Progress p ) throws Exception
 		{
-			blocked.set( false );
-			p.indeterminate( true, "Preparing..." );
-			this.thread = new Thread( () -> {
-				try
-				{
-					int i = 20;
-					while ( !p.isCanceled() && i-- > 0 )
-					{
-						// Simulate doing some work.
-						Thread.sleep( 100 );
-
-						p.set( ( 20 - i ) / 20., "Running..." );
-
-						if ( blocked.get() )
-							i++; // Simulate that stopping takes more time.
-					}
-				}
-				catch ( final InterruptedException e )
-				{
-					e.printStackTrace();
-				}
-				if ( p.isCanceled() )
-					p.message( "Model run canceled.", Color.ORANGE );
-				else
-					p.message( "Model run finished." );
-			} );
-			thread.start();
-			try
+			cancelRequested.set( false );
+			p.indeterminate( false, "Preparing..." );
+			Thread.sleep( 500 );
+			final int steps = 20;
+			for ( int i = 1; i <= steps; i++ )
 			{
-				thread.join();
+				if ( p.isCanceled() || cancelRequested.get() )
+				{
+					p.message( "Model run canceled.", java.awt.Color.ORANGE );
+					return;
+				}
+				Thread.sleep( 100 );
+				p.set( i / ( double ) steps, "Running " + config.builtinModel.getValue() );
 			}
-			catch ( final InterruptedException e )
-			{
-				e.printStackTrace();
-			}
+			p.message( "Model run finished." );
 		}
 
+		@Override
 		public void cancel()
 		{
-			blocked.set( true );
-			System.out.println( "Stopping will take 2s" );
-			try
-			{
-				Thread.sleep( 2000 );
-			}
-			catch ( final InterruptedException e )
-			{
-				e.printStackTrace();
-			}
-//			canceled.set( true );
+			cancelRequested.set( true );
 		}
 	}
 }
