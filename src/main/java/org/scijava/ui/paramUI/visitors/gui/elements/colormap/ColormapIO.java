@@ -1,4 +1,4 @@
-package org.scijava.ui.paramUI.gui.elements.colormap;
+package org.scijava.ui.paramUI.visitors.gui.elements.colormap;
 
 import java.awt.Color;
 import java.io.IOException;

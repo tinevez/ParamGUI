@@ -9,7 +9,6 @@
 		<relativePath />
 	</parent>
 
-	<groupId>org.scijava</groupId>
 	<artifactId>ParamGUI</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
@@ -89,6 +88,11 @@
 	</properties>
 
 	<dependencies>
+
+		<dependency>
+			<groupId>org.scijava</groupId>
+			<artifactId>scijava-common</artifactId>
+		</dependency>
 
 		<!-- Test dependencies -->
 		<dependency>

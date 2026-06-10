@@ -1,19 +1,19 @@
 package org.scijava.ui.paramUI;
 
-import java.awt.event.WindowAdapter;
 import java.util.Map;
-
-import javax.swing.JFrame;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.scijava.ui.paramUI.Parameters.BooleanParam;
 import org.scijava.ui.paramUI.Parameters.DoubleParam;
 import org.scijava.ui.paramUI.Parameters.EnumParam;
 import org.scijava.ui.paramUI.Parameters.IntParam;
 import org.scijava.ui.paramUI.Parameters.PathParam;
-import org.scijava.ui.paramUI.gui.GuiBuilder;
-import org.scijava.ui.paramUI.gui.GuiBuilder.ConfigPanel;
 import org.scijava.ui.paramUI.visitors.Maps;
 import org.scijava.ui.paramUI.visitors.Strings;
+import org.scijava.ui.paramUI.visitors.gui.FrameBuilder;
+import org.scijava.ui.paramUI.visitors.gui.FrameBuilder.ConfigFrame;
+import org.scijava.ui.paramUI.visitors.gui.FrameBuilder.ConfigFrame.Progress;
+import org.scijava.ui.paramUI.visitors.gui.FrameBuilder.UserTask;
 
 /**
  * Demo with a UI that would configure Cellpose 3.
@@ -52,27 +52,30 @@ public class Demo
 			super( "Cellpose 3", "https://imagej.net/plugins/cellpose-appose#usage" );
 
 			// Choice among an enum.
-			this.builtinModel = addEnumArgument( Cellpose3BuiltinModels.class )
+			this.builtinModel = addEnumParameter( Cellpose3BuiltinModels.class )
 					.key( "BUILTIN_MODEL" )
 					.defaultValue( Cellpose3BuiltinModels.CYTO3 )
 					.name( "Builtin model" )
+					.help( "https://cellpose.readthedocs.io/en/v3.1.1.1/models.html#full-built-in-models" )
 					.get();
 
 			// File path.
-			this.customModel = addPathArgument()
+			this.customModel = addPathParameter()
 					.key( "CUSTOM_MODEL_PATH" )
+					.defaultValue( "" ) // Better than null.
 					.name( "Path to custom model" )
 					.help( "Path to a custom Cellpose 3 model. " )
 					.get();
 
 			// One or the other, but not both.
-			this.builtinOrCustom = addSelectableArguments()
+			this.builtinOrCustom = addSelectableParameters()
 					.key( "BUILTIN_OR_CUSTOM" )
 					.add( builtinModel )
-					.add( customModel );
+					.add( customModel )
+					.get();
 
 			// Channels, two int params.
-			this.chan1 = addIntArgument()
+			this.chan1 = addIntParameter()
 					.key( "CHAN1" )
 					.name( "Main channel" )
 					.help( "The main channel to segment. Select 0 to use a grayscale blend of all channels." )
@@ -80,7 +83,7 @@ public class Demo
 					.min( 0 )
 					.max( nChannels )
 					.get();
-			this.chan2 = addIntArgument()
+			this.chan2 = addIntParameter()
 					.key( "CHAN2" )
 					.name( "Optional channel" )
 					.help( "The second channel to segment. Select 0 to skip using a second channel." )
@@ -92,9 +95,12 @@ public class Demo
 			// Diameter param is in pixel, but we want to display it in physical
 			// units. So we set a translator that converts between the two.
 
-			this.diameter = addDoubleArgument()
+			this.diameter = addDoubleParameter()
 					.key( "DIAMETER" )
 					.name( "Diameter" )
+					.help( "<html>Estimated diameter of objects, in physical units "
+							+ "(stored in pixel size internally). " +
+							"Set to 0 to let Cellpose estimate it automatically.</html>" )
 					.units( units )
 					.defaultValue( 30. )
 					.min( 0. ) // But no max
@@ -106,7 +112,7 @@ public class Demo
 			 * Advanced parameters.
 			 */
 
-			this.flowThreshold = addDoubleArgument()
+			this.flowThreshold = addDoubleParameter()
 					.key( "FLOW_THRESHOLD" )
 					.name( "Flow threshold" )
 					.help( "<html>Threshold for flow error filtering. Lower = more masks (permissive), Higher = fewer masks (strict).</html>" )
@@ -115,7 +121,7 @@ public class Demo
 					.max( 3. )
 					.get();
 
-			this.cellprobThreshold = addDoubleArgument()
+			this.cellprobThreshold = addDoubleParameter()
 					.key( "CELPROB_THRESHOLD" )
 					.name( "Cell probability threshold" )
 					.help( "<html>Threshold for cell probability. Increase to filter low-confidence detections.</html>" )
@@ -124,7 +130,7 @@ public class Demo
 					.max( 6. )
 					.get();
 
-			this.minSize = addIntArgument()
+			this.minSize = addIntParameter()
 					.key( "MIN_SIZE" )
 					.name( "Minimum size" )
 					.help( "Objects smaller than this are removed." )
@@ -137,7 +143,7 @@ public class Demo
 					.add( flowThreshold )
 					.add( cellprobThreshold )
 					.add( minSize )
-					.visible( false )
+					.collapsed( true )
 					.get();
 
 			/*
@@ -147,18 +153,21 @@ public class Demo
 			this.exportROIs = addFlag()
 					.key( "EXPORT_ROIS" )
 					.name( "Export ROIs" )
+					.help( "If set, ROIs will be computed from the labels output and added to the input image." )
 					.defaultValue( true )
 					.get();
 
 			this.exportLabels = addFlag()
 					.key( "EXPORT_LABELS" )
 					.name( "Export label image" )
+					.help( "If set, the label image will be shown." )
 					.defaultValue( false )
 					.get();
 
 			this.exportFlows = addFlag()
 					.key( "EXPORT_FLOWS" )
 					.name( "Export flows" )
+					.help( "If set, the Cellpose flows will be shown as a 3-channel image" )
 					.defaultValue( false )
 					.get();
 
@@ -166,7 +175,7 @@ public class Demo
 					.add( exportROIs )
 					.add( exportLabels )
 					.add( exportFlows )
-					.visible( true )
+					.collapsed( false )
 					.get();
 		}
 	}
@@ -207,7 +216,7 @@ public class Demo
 		// Re-read the map into a new config.
 		final Cellpose3Config config2 = new Cellpose3Config( nChannels, pixelSize, units );
 		Maps.fromMap( map, config2 );
-		System.out.println(  );
+		System.out.println();
 		System.out.println( "------------------------------" );
 		System.out.println( "After modifying the map" );
 		System.out.println( "------------------------------" );
@@ -218,25 +227,50 @@ public class Demo
 		 * GUI
 		 */
 
-		final ConfigPanel panel = GuiBuilder.build( config2 );
-		final JFrame frame = new JFrame( config2.getName() );
-		frame.addWindowListener( new WindowAdapter()
-		{
-			@Override
-			public void windowClosing( final java.awt.event.WindowEvent e )
-			{
-				System.out.println();
-				System.out.println( "------------------------------" );
-				System.out.println( "After modifying with the UI" );
-				System.out.println( "------------------------------" );
-				System.out.println( Strings.echo( config2 ) );
-				System.out.println( "------------------------------" );
-				System.exit( 0 );
-			}
-		} );
-		frame.getContentPane().add( panel );
-		frame.pack();
-		frame.setLocationByPlatform( true );
+		final DummyRunner dummyRunner = new DummyRunner( config2 );
+		final Configurator defaultValues = new Cellpose3Config( nChannels, pixelSize, units );
+
+		final ConfigFrame frame = FrameBuilder.build( config2, dummyRunner, defaultValues );
+
 		frame.setVisible( true );
+	}
+
+	private static class DummyRunner implements UserTask
+	{
+
+		private final Cellpose3Config config;
+
+		private final AtomicBoolean cancelRequested = new AtomicBoolean( false );
+
+		public DummyRunner( final Cellpose3Config config )
+		{
+			this.config = config;
+		}
+
+		@Override
+		public void run( final Progress p ) throws Exception
+		{
+			cancelRequested.set( false );
+			p.indeterminate( false, "Preparing..." );
+			Thread.sleep( 500 );
+			final int steps = 20;
+			for ( int i = 1; i <= steps; i++ )
+			{
+				if ( p.isCanceled() || cancelRequested.get() )
+				{
+					p.message( "Model run canceled.", java.awt.Color.ORANGE );
+					return;
+				}
+				Thread.sleep( 100 );
+				p.set( i / ( double ) steps, "Running " + config.builtinModel.getValue() );
+			}
+			p.message( "Model run finished." );
+		}
+
+		@Override
+		public void cancel()
+		{
+			cancelRequested.set( true );
+		}
 	}
 }

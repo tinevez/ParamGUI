@@ -17,9 +17,7 @@ public class ParameterGroup implements Iterable< Parameter< ?, ? > >
 
 	private String name = toString();
 
-	private String help = "";
-
-	private boolean visible = false;
+	private boolean collapsed = true;
 
 	protected List< Parameter< ?, ? > > parameters = new ArrayList<>();
 
@@ -34,26 +32,22 @@ public class ParameterGroup implements Iterable< Parameter< ?, ? > >
 		return name;
 	}
 
-	ParameterGroup help( final String help )
+	/**
+	 * Set whether the group is folded (collapsed, default) or unfolded
+	 * (expanded) when displayed in a UI.
+	 * 
+	 * @param collapsed
+	 * @return this parameter group.
+	 */
+	ParameterGroup collapsed( final boolean collapsed )
 	{
-		this.help = help;
+		this.collapsed = collapsed;
 		return this;
 	}
 
-	public String getHelp()
+	public boolean isCollapsed()
 	{
-		return help;
-	}
-
-	ParameterGroup visible( final boolean visible )
-	{
-		this.visible = visible;
-		return this;
-	}
-
-	public boolean isVisible()
-	{
-		return visible;
+		return collapsed;
 	}
 
 	void add( final Parameter< ?, ? > param )
@@ -72,9 +66,6 @@ public class ParameterGroup implements Iterable< Parameter< ?, ? > >
 	{
 		return getName()
 				+ " (" + this.getClass().getSimpleName() + ")\n"
-				+ ( ( getHelp() == null )
-						? " - no help\n"
-						: " - help: " + getHelp() + "\n" )
-				+ " - visible: " + isVisible() + "\n";
+				+ " - collapsed: " + isCollapsed() + "\n";
 	}
 }

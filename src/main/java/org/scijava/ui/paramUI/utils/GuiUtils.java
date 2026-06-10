@@ -22,17 +22,13 @@
 package org.scijava.ui.paramUI.utils;
 
 import java.awt.Component;
-import java.awt.Dimension;
-import java.awt.DisplayMode;
+import java.awt.Desktop;
 import java.awt.Font;
-import java.awt.GraphicsDevice;
-import java.awt.GraphicsEnvironment;
-import java.awt.Point;
-import java.awt.Window;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 
 import javax.swing.JComponent;
+import javax.swing.JOptionPane;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 
@@ -67,54 +63,34 @@ public class GuiUtils
 			c.setFont( font );
 	}
 
-	/**
-	 * Positions a JFrame more or less cleverly next a {@link Component}.
-	 *
-	 * @param gui
-	 *            the window to position.
-	 * @param component
-	 *            the component to position next to.
-	 */
-	public static void positionWindow( final Window gui, final Component component )
+	public static boolean isLikelyUrl( final String s )
 	{
+		if ( s == null )
+			return false;
+		final String t = s.trim().toLowerCase();
+		return t.startsWith( "http://" ) || t.startsWith( "https://" ) || t.startsWith( "file:" );
+	}
 
-		if ( null != component )
+	public static void openInBrowser( final String url, final Component parent )
+	{
+		try
 		{
-			// Get total size of all screens
-			final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-			final GraphicsDevice[] gs = ge.getScreenDevices();
-			int screenWidth = 0;
-			for ( int i = 0; i < gs.length; i++ )
+			if ( Desktop.isDesktopSupported() )
 			{
-				final DisplayMode dm = gs[ i ].getDisplayMode();
-				screenWidth += dm.getWidth();
-			}
-
-			final Point windowLoc = component.getLocation();
-			final Dimension windowSize = component.getSize();
-			final Dimension guiSize = gui.getSize();
-			if ( guiSize.width > windowLoc.x )
-			{
-				if ( guiSize.width > screenWidth - ( windowLoc.x + windowSize.width ) )
-				{
-					gui.setLocationRelativeTo( null ); // give up
-				}
-				else
-				{
-					// put it to the right
-					gui.setLocation( windowLoc.x + windowSize.width, windowLoc.y );
-				}
+				Desktop.getDesktop().browse( new java.net.URI( url.trim() ) );
 			}
 			else
 			{
-				// put it to the left
-				gui.setLocation( windowLoc.x - guiSize.width, windowLoc.y );
+				JOptionPane.showMessageDialog( parent,
+						"Desktop browsing not supported.\n" + url,
+						"Help", JOptionPane.INFORMATION_MESSAGE );
 			}
-
 		}
-		else
+		catch ( final Exception ex )
 		{
-			gui.setLocationRelativeTo( null );
+			JOptionPane.showMessageDialog( parent,
+					"Could not open:\n" + url + "\n" + ex.getMessage(),
+					"Help", JOptionPane.ERROR_MESSAGE );
 		}
 	}
 }

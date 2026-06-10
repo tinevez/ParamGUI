@@ -11,8 +11,7 @@ public class Maps
 {
 
 	/**
-	 * Convert a Configurator to a Map of key to value. Parameters without keys
-	 * are skipped. Selectables are included.
+	 * Convert a Configurator to a Map of key to value.
 	 * 
 	 * @param config
 	 *            the Configurator to convert.
@@ -25,30 +24,37 @@ public class Maps
 		for ( final Parameter< ?, ? > param : config )
 		{
 			final String key = param.getKey();
-			if ( key == null )
-				continue; // skip parameters without keys
 			map.put( key, param.getValue() );
 		}
 		for ( final SelectableParameters selectable : config.getSelectables() )
 		{
 			final String key = selectable.getKey();
-			if ( key == null )
-				continue; // skip selectables without keys
 			map.put( key, selectable.getSelection().getKey() );
 		}
 		return map;
 	}
 
-	public static final void fromMap( final Map< String, Object > settings, final Configurator config )
+	/**
+	 * Fills the specified Configurator with the values from the specified Map,
+	 * by matching the keys of the Map to the keys of the Configurator's
+	 * parameters.
+	 * 
+	 * @param map
+	 *            the Map containing the keys and values to set in the
+	 *            Configurator.
+	 * @param config
+	 *            the Configurator to fill with the values from the Map.
+	 */
+	public static final void fromMap( final Map< String, Object > map, final Configurator config )
 	{
-		config.getParameters().forEach( arg -> fromMap( settings, arg ) );
-		config.getSelectables().forEach( selectable -> fromMap( settings, selectable ) );
+		config.getParameters().forEach( arg -> fromMap( map, arg ) );
+		config.getSelectables().forEach( selectable -> fromMap( map, selectable ) );
 	}
 
-	private static < O > void fromMap( final Map< String, Object > settings, final Parameter< ?, O > param )
+	private static < O > void fromMap( final Map< String, Object > map, final Parameter< ?, O > param )
 	{
 		final String key = param.getKey();
-		final Object val = settings.get( key );
+		final Object val = map.get( key );
 		if ( val != null )
 		{
 			@SuppressWarnings( "unchecked" )
@@ -57,9 +63,9 @@ public class Maps
 		}
 	}
 
-	private static void fromMap( final Map< String, Object > settings, final SelectableParameters selectable )
+	private static void fromMap( final Map< String, ? > map, final SelectableParameters selectable )
 	{
-		final Object val = settings.get( selectable.getKey() );
+		final Object val = map.get( selectable.getKey() );
 		if ( val != null )
 			selectable.select( ( String ) val );
 	}

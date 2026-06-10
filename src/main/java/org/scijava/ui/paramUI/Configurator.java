@@ -51,7 +51,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 
 	/**
 	 * The translators that will be applied to a value read from the UI, before
-	 * storing it in the Argument.
+	 * storing it in the Parameter object.
 	 */
 	protected final Map< Parameter< ?, ? >, Function< ?, ? > > backwardUITranslators = new HashMap<>();
 
@@ -147,7 +147,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	/*
-	 * SELECTABLE ARGUMENT GROUPS.
+	 * SELECTABLE PARAMETER GROUPS.
 	 */
 
 	/**
@@ -158,11 +158,9 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return a new {@link SelectableParameters} instance.
 	 */
-	protected SelectableParameters addSelectableArguments()
+	protected SelectableParamAdder addSelectableParameters()
 	{
-		final SelectableParameters sa = new SelectableParameters();
-		selectables.add( sa );
-		return sa;
+		return new SelectableParamAdder();
 	}
 
 	public static class SelectableParameters
@@ -170,21 +168,14 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 
 		private final List< Parameter< ?, ? > > params = new ArrayList<>();
 
-		private String key;
+		private final String key;
 
 		private int selected = 0;
 
-		public SelectableParameters add( final Parameter< ?, ? > arg )
-		{
-			if ( !params.contains( arg ) )
-				params.add( arg );
-			return this;
-		}
-
-		public SelectableParameters key( final String key )
+		private SelectableParameters( final String key, final List< Parameter< ?, ? > > params )
 		{
 			this.key = key;
-			return this;
+			this.params.addAll( params );
 		}
 
 		public String getKey()
@@ -284,10 +275,6 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 
 		protected String name;
 
-		protected String help;
-
-		protected boolean visible = true; // by default
-
 		/**
 		 * Specifies the key to use to persist the value of this parameter. If
 		 * <code>null</code>, the parameter will not be persisted.
@@ -299,20 +286,6 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		public T key( final String key )
 		{
 			this.key = key;
-			return ( T ) this;
-		}
-
-		/**
-		 * Specifies whether this parameter will be visible in user interfaces
-		 * generated from the configurator.
-		 *
-		 * @param visible
-		 *            UI visibility.
-		 * @return this adder.
-		 */
-		public T visible( final boolean visible )
-		{
-			this.visible = visible;
 			return ( T ) this;
 		}
 
@@ -330,25 +303,20 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		}
 
 		/**
-		 * Specifies a help text for the parameter.
-		 *
-		 * @param help
-		 *            the help text.
-		 * @return this adder.
-		 */
-		public T help( final String help )
-		{
-			this.help = help;
-			return ( T ) this;
-		}
-
-		/**
 		 * Returns the parameter created by this builder.
 		 *
 		 * @return the parameter.
 		 */
 		public abstract A get();
 
+		/**
+		 * Basic consistency check for the builder.
+		 */
+		protected void check()
+		{
+			if ( key == null )
+				throw new IllegalArgumentException( "Parameter '" + name + "' must have a key." );
+		}
 	}
 
 	/**
@@ -370,6 +338,10 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 
 		protected O defaultValue;
 
+		protected String help;
+
+		protected boolean visible = true; // by default
+
 		/**
 		 * Specifies units for values accepted by this parameter.
 		 *
@@ -380,6 +352,33 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		public T units( final String units )
 		{
 			this.units = units;
+			return ( T ) this;
+		}
+
+		/**
+		 * Specifies whether this parameter will be visible in user interfaces
+		 * generated from the configurator.
+		 *
+		 * @param visible
+		 *            UI visibility.
+		 * @return this adder.
+		 */
+		public T visible( final boolean visible )
+		{
+			this.visible = visible;
+			return ( T ) this;
+		}
+
+		/**
+		 * Specifies a help text for the parameter.
+		 *
+		 * @param help
+		 *            the help text.
+		 * @return this adder.
+		 */
+		public T help( final String help )
+		{
+			this.help = help;
 			return ( T ) this;
 		}
 
@@ -399,7 +398,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	}
 
 	@SuppressWarnings( "unchecked" )
-	private abstract class BoundedAdder< A extends BoundedValueParameter< A, O >, T extends BoundedAdder< A, T, O >, O > extends ParamAdder< A, T, O >
+	private abstract class BoundedAdder< A extends BoundedValueParameter< A, O >, T extends BoundedAdder< A, T, O >, O extends Comparable< O > > extends ParamAdder< A, T, O >
 	{
 		protected O min;
 
@@ -487,6 +486,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		@Override
 		public BooleanParam get()
 		{
+			check();
 			final BooleanParam arg = new BooleanParam()
 					.name( name )
 					.help( help )
@@ -509,6 +509,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		@Override
 		public StringParam get()
 		{
+			check();
 			final StringParam arg = new StringParam()
 					.name( name )
 					.help( help )
@@ -531,6 +532,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		@Override
 		public PathParam get()
 		{
+			check();
 			final PathParam arg = new PathParam()
 					.name( name )
 					.help( help )
@@ -656,6 +658,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		@Override
 		public ChoiceParam get()
 		{
+			check();
 			final ChoiceParam arg = new ChoiceParam()
 					.name( name )
 					.help( help )
@@ -685,6 +688,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		@Override
 		public EnumParam< E > get()
 		{
+			check();
 			final EnumParam< E > arg = new EnumParam<>( enumClass )
 					.name( name )
 					.help( help )
@@ -697,15 +701,53 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 			return arg;
 		}
 	}
+	
+	protected class SelectableParamAdder extends Adder< SelectableParameters, SelectableParamAdder >
+	{
+
+		private final List< Parameter< ?, ? > > params = new ArrayList<>();
+
+		public < T extends Parameter< T, O >, O > SelectableParamAdder add( final T param )
+		{
+			if ( !params.contains( param ) )
+				params.add( param );
+			return this;
+		}
+
+		@Override
+		public SelectableParameters get()
+		{
+			check();
+			final SelectableParameters sp = new SelectableParameters( key, params );
+			selectables.add( sp );
+			return sp;
+		}
+	}
 
 	protected class GroupAdder extends Adder< ParameterGroup, GroupAdder >
 	{
 
-		private List< Parameter< ?, ? > > params = new ArrayList<>();
+		protected final List< Parameter< ?, ? > > params = new ArrayList<>();
+
+		protected boolean collapsed = true; // by default
 
 		public < T extends Parameter< T, O >, O > GroupAdder add( final T param )
 		{
 			params.add( param );
+			return this;
+		}
+
+		/**
+		 * Set whether the group is folded (collapsed, default) or unfolded
+		 * (expanded) when displayed in a UI.
+		 * 
+		 * @param collapsed
+		 *            whether the group is collapsed when displayed in a UI.
+		 * @return this group adder.
+		 */
+		public GroupAdder collapsed( final boolean collapsed )
+		{
+			this.collapsed = collapsed;
 			return this;
 		}
 
@@ -714,8 +756,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 		{
 			final ParameterGroup group = new ParameterGroup()
 					.name( name )
-					.help( help )
-					.visible( visible );
+					.collapsed( collapsed );
 			for ( final Parameter< ?, ? > param : params )
 				group.add( param );
 			Configurator.this.groups.add( group );
@@ -743,7 +784,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return new string parameter builder.
 	 */
-	protected StringAdder addStringArgument()
+	protected StringAdder addStringParameter()
 	{
 		return new StringAdder();
 	}
@@ -753,7 +794,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return new path parameter builder.
 	 */
-	protected PathAdder addPathArgument()
+	protected PathAdder addPathParameter()
 	{
 		return new PathAdder();
 	}
@@ -763,7 +804,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return new integer parameter builder.
 	 */
-	protected IntAdder addIntArgument()
+	protected IntAdder addIntParameter()
 	{
 		return new IntAdder();
 	}
@@ -773,7 +814,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return new double parameter builder.
 	 */
-	protected DoubleAdder addDoubleArgument()
+	protected DoubleAdder addDoubleParameter()
 	{
 		return new DoubleAdder();
 	}
@@ -785,7 +826,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return new choice parameter builder.
 	 */
-	protected ChoiceAdder addChoiceArgument()
+	protected ChoiceAdder addChoiceParameter()
 	{
 		return new ChoiceAdder();
 	}
@@ -801,11 +842,19 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *            the class of the enum values.
 	 * @return new enum parameter builder.
 	 */
-	protected < E extends Enum< E > > EnumAdder< E > addEnumArgument( final Class< E > enumClass )
+	protected < E extends Enum< E > > EnumAdder< E > addEnumParameter( final Class< E > enumClass )
 	{
 		return new EnumAdder<>( enumClass );
 	}
 
+	/**
+	 * Adds a group of parameters to the config, via a builder. Such groups are
+	 * used to group parameters together in the UI.
+	 * 
+	 * @param name
+	 *            the name of the group.
+	 * @return a new group builder.
+	 */
 	protected GroupAdder addGroup( final String name )
 	{
 		return new GroupAdder().name( name );
