@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.scijava.Cancelable;
+import org.scijava.command.Previewable;
 import org.scijava.ui.paramUI.Parameters.BooleanParam;
 import org.scijava.ui.paramUI.Parameters.DoubleParam;
 import org.scijava.ui.paramUI.Parameters.EnumParam;
@@ -237,7 +238,7 @@ public class Demo
 		frame.setVisible( true );
 	}
 
-	private static class DummyRunner implements UserTask, Cancelable
+	private static class DummyRunner implements UserTask, Cancelable, Previewable
 	{
 
 		private final Cellpose3Config config;
@@ -288,6 +289,34 @@ public class Demo
 		public String getCancelReason()
 		{
 			return cancelReason;
+		}
+
+		@Override
+		public void preview()
+		{
+			cancelRequested.set( false );
+			System.out.println( "Previewing with config: " + config );
+			try
+			{
+				Thread.sleep( 2500 );
+			}
+			catch ( final InterruptedException e )
+			{
+				e.printStackTrace();
+			}
+			if ( cancelRequested.get() )
+			{
+				System.out.println( "Preview was canceled." );
+				return;
+			}
+			System.out.println( "Preview done." );
+		}
+
+		@Override
+		public void cancel()
+		{
+			cancelRequested.set( true );
+			System.out.println( "Preview canceled." );
 		}
 	}
 }

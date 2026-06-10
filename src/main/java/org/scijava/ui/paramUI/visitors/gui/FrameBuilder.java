@@ -118,7 +118,7 @@ public final class FrameBuilder< C extends Configurator >
 			final boolean cancelable = ( task instanceof Cancelable );
 			final boolean previewable = ( task instanceof Previewable );
 
-			frame.btnRun = flatButton( Icons.PLAY, "Run the plugin", runner( cancelable ) );
+			frame.btnRun = flatButton( Icons.PLAY, "Run", runner( cancelable ) );
 
 			if ( cancelable )
 			{
@@ -137,8 +137,14 @@ public final class FrameBuilder< C extends Configurator >
 
 			if ( previewable )
 			{
-				frame.btnPreview = flatButton( Icons.PREVIEW, "Preview the plugin", previewer() );
-				row.add( frame.btnPreview );
+				frame.btnPreview = flatButton( Icons.PREVIEW, "Preview", previewer() );
+				frame.btnStopPreview = flatButton( Icons.STOP_PREVIEW, "Stop preview", previewStopper() );
+				frame.btnStopPreview.setVisible( false );
+				frame.previewRunStop = new JPanel( new CardLayout() );
+				frame.previewRunStop.add( frame.btnPreview, "PREVIEW" );
+				frame.previewRunStop.add( frame.btnStopPreview, "STOP_PREVIEW" );
+
+				row.add( frame.previewRunStop );
 			}
 		}
 
@@ -230,7 +236,10 @@ public final class FrameBuilder< C extends Configurator >
 				Throwable error = null;
 				try
 				{
-					( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "STOP" );
+					if ( cancelable )
+						( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "STOP" );
+					else
+						frame.btnRun.setEnabled( false );
 					if ( task != null )
 						task.run( frame.getProgress() );
 				}
@@ -278,7 +287,7 @@ public final class FrameBuilder< C extends Configurator >
 		};
 	}
 
-	private ActionListener previewer()
+	protected ActionListener previewer()
 	{
 		return e -> {
 			if ( !( task instanceof Previewable ) )
@@ -286,11 +295,22 @@ public final class FrameBuilder< C extends Configurator >
 
 			if ( runThread != null && runThread.isAlive() )
 				return;
-			final Previewable prev = ( Previewable ) task;
-			final JButton btn = frame.btnPreview;
 
-			if ( btn != null )
-				btn.setEnabled( false );
+			frame.disabler.disable();
+			final Previewable prev = ( Previewable ) task;
+
+			if ( frame.previewRunStop != null && frame.btnStopPreview != null && frame.btnPreview != null )
+			{
+				frame.btnPreview.setVisible( false );
+				frame.btnStopPreview.setVisible( true );
+				frame.btnStopPreview.setEnabled( true );
+				( ( CardLayout ) frame.previewRunStop.getLayout() ).show( frame.previewRunStop, "STOP_PREVIEW" );
+			}
+			else if ( frame.btnPreview != null )
+			{
+				frame.btnPreview.setEnabled( false );
+			}
+
 			SwingUtilities.invokeLater( () -> {
 				frame.progressBar.setIndeterminate( true );
 				frame.progressBar.setForeground( frame.defaultProgressForeground );
@@ -317,11 +337,40 @@ public final class FrameBuilder< C extends Configurator >
 				finally
 				{
 					SwingUtilities.invokeLater( () -> {
-						if ( btn != null )
-							btn.setEnabled( true );
+						if ( frame.previewRunStop != null && frame.btnStopPreview != null && frame.btnPreview != null )
+						{
+							( ( CardLayout ) frame.previewRunStop.getLayout() ).show( frame.previewRunStop, "PREVIEW" );
+							frame.btnPreview.setVisible( true );
+							frame.btnStopPreview.setVisible( false );
+							frame.btnStopPreview.setEnabled( true );
+						}
+						else if ( frame.btnPreview != null )
+						{
+							frame.btnPreview.setEnabled( true );
+						}
+						if ( frame.disabler.disableHasBeenCalled() )
+							frame.disabler.reenable();
 					} );
 				}
 			}, "FrameBuilderPreviewThread" ).start();
+		};
+	}
+
+	protected ActionListener previewStopper()
+	{
+		return e -> {
+			if ( !( task instanceof Previewable ) )
+				return;
+			if ( frame.btnStopPreview != null )
+				frame.btnStopPreview.setEnabled( false );
+			try
+			{
+				( ( Previewable ) task ).cancel();
+			}
+			catch ( final Throwable t )
+			{
+				t.printStackTrace();
+			}
 		};
 	}
 
@@ -374,6 +423,10 @@ public final class FrameBuilder< C extends Configurator >
 
 	public static class ConfigFrame extends JFrame
 	{
+
+		public JPanel previewRunStop;
+
+		public JButton btnStopPreview;
 
 		public interface Progress
 		{
