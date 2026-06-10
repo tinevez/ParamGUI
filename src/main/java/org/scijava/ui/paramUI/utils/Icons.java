@@ -25,6 +25,10 @@ public class Icons
 
 	public static final ImageIcon STORE = get( "turned_in_not" );
 
+	public static final ImageIcon PREVIEW = get( "preview" );
+
+	public static final ImageIcon STOP_PREVIEW = get( "preview_off" );
+
 	private static final ImageIcon get( final String name )
 	{
 		return resize( load( "/icons/" + name + ".png" ), DEFAULT_ICON_SIZE, DEFAULT_ICON_SIZE );
