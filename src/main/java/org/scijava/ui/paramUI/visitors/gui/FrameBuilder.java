@@ -11,7 +11,6 @@ import java.awt.GridLayout;
 import java.awt.event.ActionListener;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.BorderFactory;
@@ -40,43 +39,23 @@ import org.scijava.ui.paramUI.visitors.gui.GuiBuilder.ConfigPanel;
 public final class FrameBuilder< C extends Configurator >
 {
 	@FunctionalInterface
-	public interface UserTask extends Cancelable, Previewable
+	public interface UserTask
 	{
 		void run( ConfigFrame.Progress progress ) throws Exception;
-
-		@Override
-		default void cancel()
-		{}
-
-		@Override
-		default void cancel( final String reason )
-		{
-			cancel();
-		}
-
-		@Override
-		default boolean isCanceled()
-		{
-			return false;
-		}
-
-		@Override
-		default String getCancelReason()
-		{
-			return null;
-		}
-
-		@Override
-		default void preview()
-		{}
 	}
 
 	protected final C config;
+
 	protected final UserTask task;
+
 	protected final Runnable onStore;
+
 	protected final Runnable onReload;
+
 	protected final Runnable onReset;
+
 	protected final Runnable onDisplay;
+
 	protected final ConfigFrame frame;
 
 	private volatile Thread runThread;
@@ -136,14 +115,31 @@ public final class FrameBuilder< C extends Configurator >
 
 		if ( task != null )
 		{
-			frame.btnRun = flatButton( Icons.PLAY, "Run the plugin", runner() );
-			frame.btnStop = flatButton( Icons.STOP, "Stop", stopper() );
-			frame.btnStop.setVisible( false );
+			final boolean cancelable = ( task instanceof Cancelable );
+			final boolean previewable = ( task instanceof Previewable );
 
-			frame.runStop = new JPanel( new java.awt.CardLayout() );
-			frame.runStop.add( frame.btnRun, "RUN" );
-			frame.runStop.add( frame.btnStop, "STOP" );
-			row.add( frame.runStop );
+			frame.btnRun = flatButton( Icons.PLAY, "Run the plugin", runner( cancelable ) );
+
+			if ( cancelable )
+			{
+				frame.btnStop = flatButton( Icons.STOP, "Stop", stopper() );
+				frame.btnStop.setVisible( false );
+
+				frame.runStop = new JPanel( new java.awt.CardLayout() );
+				frame.runStop.add( frame.btnRun, "RUN" );
+				frame.runStop.add( frame.btnStop, "STOP" );
+				row.add( frame.runStop );
+			}
+			else
+			{
+				row.add( frame.btnRun );
+			}
+
+			if ( previewable )
+			{
+				frame.btnPreview = flatButton( Icons.PREVIEW, "Preview the plugin", previewer() );
+				row.add( frame.btnPreview );
+			}
 		}
 
 		if ( onStore != null )
@@ -195,12 +191,11 @@ public final class FrameBuilder< C extends Configurator >
 	private ActionListener stopper()
 	{
 		return e -> {
-			frame.markCanceled( true );
 			if ( task != null )
 			{
 				try
 				{
-					task.cancel();
+					( ( Cancelable ) task ).cancel( "User canceled" );
 				}
 				catch ( final Throwable t )
 				{
@@ -214,15 +209,21 @@ public final class FrameBuilder< C extends Configurator >
 		};
 	}
 
-	protected ActionListener runner()
+	protected ActionListener runner( final boolean cancelable )
 	{
 		return e -> {
 			frame.disabler.disable();
-			frame.btnRun.setVisible( false );
-			if ( frame.btnStop != null )
+
+			if ( cancelable )
 			{
+				frame.btnRun.setVisible( false );
 				frame.btnStop.setVisible( true );
 				frame.btnStop.setEnabled( true );
+
+			}
+			else
+			{
+				frame.btnRun.setEnabled( false );
 			}
 
 			final Thread t = new Thread( () -> {
@@ -230,7 +231,6 @@ public final class FrameBuilder< C extends Configurator >
 				try
 				{
 					( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "STOP" );
-					frame.markCanceled( false );
 					if ( task != null )
 						task.run( frame.getProgress() );
 				}
@@ -242,12 +242,13 @@ public final class FrameBuilder< C extends Configurator >
 				{
 					final Throwable err = error;
 					SwingUtilities.invokeLater( () -> {
-						if ( frame.isCanceled() )
+						if ( task instanceof Cancelable && ( ( Cancelable ) task ).isCanceled() )
 						{
-							frame.progressBar.setString( "Canceled" );
+							// Was canceled by the user.
 						}
 						else if ( err != null )
 						{
+							// An unexpected error occurred -> message.
 							frame.progressBar.setString( "Failed: " + err.getMessage() );
 							err.printStackTrace();
 						}
@@ -255,10 +256,17 @@ public final class FrameBuilder< C extends Configurator >
 						{
 							// Completed successfully.
 						}
-						( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "RUN" );
-						frame.btnRun.setVisible( true );
-						if ( frame.btnStop != null )
-							frame.btnStop.setVisible( false );
+						if ( cancelable )
+						{
+							( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "RUN" );
+							frame.btnRun.setVisible( true );
+							if ( frame.btnStop != null )
+								frame.btnStop.setVisible( false );
+						}
+						else
+						{
+							frame.btnRun.setEnabled( true );
+						}
 						if ( frame.disabler.disableHasBeenCalled() )
 							frame.disabler.reenable();
 					} );
@@ -267,6 +275,53 @@ public final class FrameBuilder< C extends Configurator >
 			}, "FrameBuilderOnRunThread" );
 			runThread = t;
 			t.start();
+		};
+	}
+
+	private ActionListener previewer()
+	{
+		return e -> {
+			if ( !( task instanceof Previewable ) )
+				return;
+
+			if ( runThread != null && runThread.isAlive() )
+				return;
+			final Previewable prev = ( Previewable ) task;
+			final JButton btn = frame.btnPreview;
+
+			if ( btn != null )
+				btn.setEnabled( false );
+			SwingUtilities.invokeLater( () -> {
+				frame.progressBar.setIndeterminate( true );
+				frame.progressBar.setForeground( frame.defaultProgressForeground );
+				frame.progressBar.setString( "Preview…" );
+			} );
+
+			new Thread( () -> {
+				try
+				{
+					prev.preview();
+					SwingUtilities.invokeLater( () -> {
+						frame.progressBar.setIndeterminate( false );
+						frame.progressBar.setString( "Preview done" );
+					} );
+				}
+				catch ( final Throwable ex )
+				{
+					SwingUtilities.invokeLater( () -> {
+						frame.progressBar.setIndeterminate( false );
+						frame.progressBar.setString( "Preview failed: " + ex.getMessage() );
+						ex.printStackTrace();
+					} );
+				}
+				finally
+				{
+					SwingUtilities.invokeLater( () -> {
+						if ( btn != null )
+							btn.setEnabled( true );
+					} );
+				}
+			}, "FrameBuilderPreviewThread" ).start();
 		};
 	}
 
@@ -319,6 +374,7 @@ public final class FrameBuilder< C extends Configurator >
 
 	public static class ConfigFrame extends JFrame
 	{
+
 		public interface Progress
 		{
 			void set( double fraction );
@@ -332,21 +388,25 @@ public final class FrameBuilder< C extends Configurator >
 			void message( String text, Color color );
 
 			void clear();
-
-			boolean isCanceled();
 		}
 
 		public JPanel runStop;
+
 		private static final long serialVersionUID = 1L;
 
 		final EverythingDisablerAndReenabler disabler = new EverythingDisablerAndReenabler( this, new Class[] { JLabel.class, JProgressBar.class } );
-		public ConfigPanel configPanel;
-		public JButton btnStop;
-		public JButton btnRun;
-		public JProgressBar progressBar;
-		public Color defaultProgressForeground;
 
-		private final AtomicBoolean canceled = new AtomicBoolean( false );
+		public ConfigPanel configPanel;
+
+		public JButton btnStop;
+
+		public JButton btnRun;
+
+		public JButton btnPreview;
+
+		public JProgressBar progressBar;
+
+		public Color defaultProgressForeground;
 
 		private final Progress progress = new Progress()
 		{
@@ -385,12 +445,6 @@ public final class FrameBuilder< C extends Configurator >
 			{
 				clearProgress();
 			}
-
-			@Override
-			public boolean isCanceled()
-			{
-				return canceled.get();
-			}
 		};
 
 		private static final long PROGRESS_MIN_UPDATE_NANOS = 50_000_000L;
@@ -404,16 +458,6 @@ public final class FrameBuilder< C extends Configurator >
 		public Progress getProgress()
 		{
 			return progress;
-		}
-
-		void markCanceled( final boolean v )
-		{
-			canceled.set( v );
-		}
-
-		boolean isCanceled()
-		{
-			return canceled.get();
 		}
 
 		public void setProgress( final double fraction )

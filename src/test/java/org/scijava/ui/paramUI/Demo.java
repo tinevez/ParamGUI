@@ -1,8 +1,10 @@
 package org.scijava.ui.paramUI;
 
+import java.awt.Color;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.scijava.Cancelable;
 import org.scijava.ui.paramUI.Parameters.BooleanParam;
 import org.scijava.ui.paramUI.Parameters.DoubleParam;
 import org.scijava.ui.paramUI.Parameters.EnumParam;
@@ -235,12 +237,14 @@ public class Demo
 		frame.setVisible( true );
 	}
 
-	private static class DummyRunner implements UserTask
+	private static class DummyRunner implements UserTask, Cancelable
 	{
 
 		private final Cellpose3Config config;
 
 		private final AtomicBoolean cancelRequested = new AtomicBoolean( false );
+
+		private String cancelReason;
 
 		public DummyRunner( final Cellpose3Config config )
 		{
@@ -256,9 +260,9 @@ public class Demo
 			final int steps = 20;
 			for ( int i = 1; i <= steps; i++ )
 			{
-				if ( p.isCanceled() || cancelRequested.get() )
+				if ( isCanceled() )
 				{
-					p.message( "Model run canceled.", java.awt.Color.ORANGE );
+					p.message( "Canceled:" + getCancelReason(), Color.ORANGE );
 					return;
 				}
 				Thread.sleep( 100 );
@@ -268,9 +272,22 @@ public class Demo
 		}
 
 		@Override
-		public void cancel()
+		public boolean isCanceled()
 		{
+			return cancelRequested.get();
+		}
+
+		@Override
+		public void cancel( final String reason )
+		{
+			this.cancelReason = reason;
 			cancelRequested.set( true );
+		}
+
+		@Override
+		public String getCancelReason()
+		{
+			return cancelReason;
 		}
 	}
 }
