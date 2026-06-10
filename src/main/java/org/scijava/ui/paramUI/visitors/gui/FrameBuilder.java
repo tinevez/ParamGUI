@@ -27,6 +27,8 @@ import javax.swing.ScrollPaneConstants;
 import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
+import org.scijava.Cancelable;
+import org.scijava.command.Previewable;
 import org.scijava.prefs.DefaultPrefService;
 import org.scijava.ui.paramUI.Configurator;
 import org.scijava.ui.paramUI.utils.EverythingDisablerAndReenabler;
@@ -38,11 +40,34 @@ import org.scijava.ui.paramUI.visitors.gui.GuiBuilder.ConfigPanel;
 public final class FrameBuilder< C extends Configurator >
 {
 	@FunctionalInterface
-	public interface UserTask
+	public interface UserTask extends Cancelable, Previewable
 	{
 		void run( ConfigFrame.Progress progress ) throws Exception;
 
+		@Override
 		default void cancel()
+		{}
+
+		@Override
+		default void cancel( final String reason )
+		{
+			cancel();
+		}
+
+		@Override
+		default boolean isCanceled()
+		{
+			return false;
+		}
+
+		@Override
+		default String getCancelReason()
+		{
+			return null;
+		}
+
+		@Override
+		default void preview()
 		{}
 	}
 
@@ -228,10 +253,7 @@ public final class FrameBuilder< C extends Configurator >
 						}
 						else
 						{
-							frame.progressBar.setString( "Done" );
-							frame.progressBar.setIndeterminate( false );
-							frame.progressBar.setValue( frame.progressBar.getMaximum() );
-							frame.progressBar.setForeground( frame.defaultProgressForeground );
+							// Completed successfully.
 						}
 						( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "RUN" );
 						frame.btnRun.setVisible( true );
