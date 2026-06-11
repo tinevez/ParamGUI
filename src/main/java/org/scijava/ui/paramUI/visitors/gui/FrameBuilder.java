@@ -11,6 +11,7 @@ import java.awt.GridLayout;
 import java.awt.event.ActionListener;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 import javax.swing.BorderFactory;
@@ -60,6 +61,8 @@ public final class FrameBuilder< C extends Configurator >
 
 	private volatile Thread runThread;
 
+	private volatile Thread previewThread;
+
 	protected FrameBuilder(
 			final C config,
 			final UserTask task,
@@ -93,6 +96,10 @@ public final class FrameBuilder< C extends Configurator >
 		frame.progressBar.setStringPainted( true );
 		frame.progressBar.setString( "" );
 		frame.progressBar.putClientProperty( "JComponent.sizeVariant", "large" );
+		final int desiredHeight = 24;
+		frame.progressBar.setPreferredSize( new Dimension( 10, desiredHeight ) );
+		frame.progressBar.setMinimumSize( new Dimension( 10, desiredHeight ) );
+
 		frame.progressBar.setBorder( BorderFactory.createEmptyBorder( 4, 8, 8, 8 ) );
 		frame.defaultProgressForeground = frame.progressBar.getForeground();
 		south.add( frame.progressBar, BorderLayout.CENTER );
@@ -194,9 +201,10 @@ public final class FrameBuilder< C extends Configurator >
 		return b;
 	}
 
-	private ActionListener stopper()
+	protected ActionListener stopper()
 	{
 		return e -> {
+			frame.markCanceled( true );
 			if ( task != null )
 			{
 				try
@@ -219,13 +227,14 @@ public final class FrameBuilder< C extends Configurator >
 	{
 		return e -> {
 			frame.disabler.disable();
+			frame.markCanceled( false );
 
 			if ( cancelable )
 			{
 				frame.btnRun.setVisible( false );
 				frame.btnStop.setVisible( true );
 				frame.btnStop.setEnabled( true );
-
+				SwingUtilities.invokeLater( () -> ( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "STOP" ) );
 			}
 			else
 			{
@@ -236,10 +245,6 @@ public final class FrameBuilder< C extends Configurator >
 				Throwable error = null;
 				try
 				{
-					if ( cancelable )
-						( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "STOP" );
-					else
-						frame.btnRun.setEnabled( false );
 					if ( task != null )
 						task.run( frame.getProgress() );
 				}
@@ -317,7 +322,7 @@ public final class FrameBuilder< C extends Configurator >
 				frame.progressBar.setString( "Preview…" );
 			} );
 
-			new Thread( () -> {
+			final Thread t = new Thread( () -> {
 				try
 				{
 					prev.preview();
@@ -352,13 +357,16 @@ public final class FrameBuilder< C extends Configurator >
 							frame.disabler.reenable();
 					} );
 				}
-			}, "FrameBuilderPreviewThread" ).start();
+			}, "FrameBuilderPreviewThread" );
+			previewThread = t;
+			t.start();
 		};
 	}
 
 	protected ActionListener previewStopper()
 	{
 		return e -> {
+
 			if ( !( task instanceof Previewable ) )
 				return;
 			if ( frame.btnStopPreview != null )
@@ -371,6 +379,20 @@ public final class FrameBuilder< C extends Configurator >
 			{
 				t.printStackTrace();
 			}
+			if ( task instanceof Cancelable )
+			{
+				try
+				{
+					( ( Cancelable ) task ).cancel( "User canceled preview" );
+				}
+				catch ( final Throwable t )
+				{
+					t.printStackTrace();
+				}
+			}
+			final Thread t = previewThread;
+			if ( t != null )
+				t.interrupt();
 		};
 	}
 
@@ -441,6 +463,8 @@ public final class FrameBuilder< C extends Configurator >
 			void message( String text, Color color );
 
 			void clear();
+
+			boolean isCanceled();
 		}
 
 		public JPanel runStop;
@@ -458,11 +482,19 @@ public final class FrameBuilder< C extends Configurator >
 		public JButton btnPreview;
 
 		public JProgressBar progressBar;
-
+		
 		public Color defaultProgressForeground;
+
+		private final AtomicBoolean canceled = new AtomicBoolean( false );
+
+		public void markCanceled( final boolean v )
+		{
+			canceled.set( v );
+		}
 
 		private final Progress progress = new Progress()
 		{
+
 			@Override
 			public void set( final double f )
 			{
@@ -497,6 +529,12 @@ public final class FrameBuilder< C extends Configurator >
 			public void clear()
 			{
 				clearProgress();
+			}
+
+			@Override
+			public boolean isCanceled()
+			{
+				return canceled.get();
 			}
 		};
 
