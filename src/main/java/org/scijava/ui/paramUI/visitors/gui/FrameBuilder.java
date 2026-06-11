@@ -59,10 +59,6 @@ public final class FrameBuilder< C extends Configurator >
 
 	protected final ConfigFrame frame;
 
-	private volatile Thread runThread;
-
-	private volatile Thread previewThread;
-
 	protected FrameBuilder(
 			final C config,
 			final UserTask task,
@@ -125,7 +121,7 @@ public final class FrameBuilder< C extends Configurator >
 			final boolean cancelable = ( task instanceof Cancelable );
 			final boolean previewable = ( task instanceof Previewable );
 
-			frame.btnRun = flatButton( Icons.PLAY, "Run", runner( cancelable ) );
+			frame.btnRun = flatButton( Icons.PLAY, "Run", runner() );
 
 			if ( cancelable )
 			{
@@ -145,7 +141,7 @@ public final class FrameBuilder< C extends Configurator >
 			if ( previewable )
 			{
 				frame.btnPreview = flatButton( Icons.PREVIEW, "Preview", previewer() );
-				frame.btnStopPreview = flatButton( Icons.STOP_PREVIEW, "Stop preview", previewStopper() );
+				frame.btnStopPreview = flatButton( Icons.STOP, "Stop preview", previewStopper() );
 				frame.btnStopPreview.setVisible( false );
 				frame.previewRunStop = new JPanel( new CardLayout() );
 				frame.previewRunStop.add( frame.btnPreview, "PREVIEW" );
@@ -204,8 +200,11 @@ public final class FrameBuilder< C extends Configurator >
 	protected ActionListener stopper()
 	{
 		return e -> {
+			// Signal cancellation to the task
 			frame.markCanceled( true );
-			if ( task != null )
+
+			// Notify the task it should cancel
+			if ( task instanceof Cancelable )
 			{
 				try
 				{
@@ -216,19 +215,19 @@ public final class FrameBuilder< C extends Configurator >
 					t.printStackTrace();
 				}
 			}
-			final Thread t = runThread;
-			if ( t != null )
-				t.interrupt();
+
+			// Disable the button - the task will handle stopping
 			frame.btnStop.setEnabled( false );
 		};
 	}
 
-	protected ActionListener runner( final boolean cancelable )
+	protected ActionListener runner()
 	{
 		return e -> {
 			frame.disabler.disable();
 			frame.markCanceled( false );
 
+			final boolean cancelable = task instanceof Cancelable;
 			if ( cancelable )
 			{
 				frame.btnRun.setVisible( false );
@@ -258,18 +257,19 @@ public final class FrameBuilder< C extends Configurator >
 					SwingUtilities.invokeLater( () -> {
 						if ( task instanceof Cancelable && ( ( Cancelable ) task ).isCanceled() )
 						{
-							// Was canceled by the user.
+							// Was canceled by the user - task handled it
 						}
 						else if ( err != null )
 						{
-							// An unexpected error occurred -> message.
+							// An unexpected error occurred
 							frame.progressBar.setString( "Failed: " + err.getMessage() );
 							err.printStackTrace();
 						}
 						else
 						{
-							// Completed successfully.
+							// Completed successfully
 						}
+
 						if ( cancelable )
 						{
 							( ( CardLayout ) frame.runStop.getLayout() ).show( frame.runStop, "RUN" );
@@ -281,13 +281,12 @@ public final class FrameBuilder< C extends Configurator >
 						{
 							frame.btnRun.setEnabled( true );
 						}
+
 						if ( frame.disabler.disableHasBeenCalled() )
 							frame.disabler.reenable();
 					} );
-					runThread = null;
 				}
-			}, "FrameBuilderOnRunThread" );
-			runThread = t;
+			}, "FrameBuilderRunThread" );
 			t.start();
 		};
 	}
@@ -298,11 +297,8 @@ public final class FrameBuilder< C extends Configurator >
 			if ( !( task instanceof Previewable ) )
 				return;
 
-			if ( runThread != null && runThread.isAlive() )
-				return;
-
 			frame.disabler.disable();
-			final Previewable prev = ( Previewable ) task;
+			final Previewable previewable = ( Previewable ) task;
 
 			if ( frame.previewRunStop != null && frame.btnStopPreview != null && frame.btnPreview != null )
 			{
@@ -325,7 +321,7 @@ public final class FrameBuilder< C extends Configurator >
 			final Thread t = new Thread( () -> {
 				try
 				{
-					prev.preview();
+					previewable.preview();
 					SwingUtilities.invokeLater( () -> {
 						frame.progressBar.setIndeterminate( false );
 						frame.progressBar.setString( "Preview done" );
@@ -347,18 +343,17 @@ public final class FrameBuilder< C extends Configurator >
 							( ( CardLayout ) frame.previewRunStop.getLayout() ).show( frame.previewRunStop, "PREVIEW" );
 							frame.btnPreview.setVisible( true );
 							frame.btnStopPreview.setVisible( false );
-							frame.btnStopPreview.setEnabled( true );
 						}
 						else if ( frame.btnPreview != null )
 						{
 							frame.btnPreview.setEnabled( true );
 						}
+
 						if ( frame.disabler.disableHasBeenCalled() )
 							frame.disabler.reenable();
 					} );
 				}
 			}, "FrameBuilderPreviewThread" );
-			previewThread = t;
 			t.start();
 		};
 	}
@@ -366,19 +361,24 @@ public final class FrameBuilder< C extends Configurator >
 	protected ActionListener previewStopper()
 	{
 		return e -> {
-
 			if ( !( task instanceof Previewable ) )
 				return;
+
 			if ( frame.btnStopPreview != null )
 				frame.btnStopPreview.setEnabled( false );
+
+			// Signal cancellation to the preview task
+			final Previewable previewable = ( Previewable ) task;
 			try
 			{
-				( ( Previewable ) task ).cancel();
+				previewable.cancel();
 			}
 			catch ( final Throwable t )
 			{
 				t.printStackTrace();
 			}
+
+			// If the task is also Cancelable, notify it as well
 			if ( task instanceof Cancelable )
 			{
 				try
@@ -390,9 +390,6 @@ public final class FrameBuilder< C extends Configurator >
 					t.printStackTrace();
 				}
 			}
-			final Thread t = previewThread;
-			if ( t != null )
-				t.interrupt();
 		};
 	}
 
@@ -445,7 +442,6 @@ public final class FrameBuilder< C extends Configurator >
 
 	public static class ConfigFrame extends JFrame
 	{
-
 		public JPanel previewRunStop;
 
 		public JButton btnStopPreview;
@@ -482,7 +478,7 @@ public final class FrameBuilder< C extends Configurator >
 		public JButton btnPreview;
 
 		public JProgressBar progressBar;
-		
+
 		public Color defaultProgressForeground;
 
 		private final AtomicBoolean canceled = new AtomicBoolean( false );
@@ -494,7 +490,6 @@ public final class FrameBuilder< C extends Configurator >
 
 		private final Progress progress = new Progress()
 		{
-
 			@Override
 			public void set( final double f )
 			{
