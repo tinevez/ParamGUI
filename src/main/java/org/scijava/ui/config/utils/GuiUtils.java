@@ -23,7 +23,13 @@ package org.scijava.ui.config.utils;
 
 import java.awt.Component;
 import java.awt.Desktop;
+import java.awt.Dimension;
+import java.awt.DisplayMode;
 import java.awt.Font;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
+import java.awt.Point;
+import java.awt.Window;
 import java.awt.event.FocusEvent;
 import java.awt.event.FocusListener;
 
@@ -91,6 +97,57 @@ public class GuiUtils
 			JOptionPane.showMessageDialog( parent,
 					"Could not open:\n" + url + "\n" + ex.getMessage(),
 					"Help", JOptionPane.ERROR_MESSAGE );
+		}
+	}
+
+	/**
+	 * Positions a JFrame more or less cleverly next a {@link Component}.
+	 *
+	 * @param gui
+	 *            the window to position.
+	 * @param component
+	 *            the component to position next to.
+	 */
+	public static void positionWindow( final Window gui, final Component component )
+	{
+
+		if ( null != component )
+		{
+			// Get total size of all screens
+			final GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
+			final GraphicsDevice[] gs = ge.getScreenDevices();
+			int screenWidth = 0;
+			for ( int i = 0; i < gs.length; i++ )
+			{
+				final DisplayMode dm = gs[ i ].getDisplayMode();
+				screenWidth += dm.getWidth();
+			}
+
+			final Point windowLoc = component.getLocation();
+			final Dimension windowSize = component.getSize();
+			final Dimension guiSize = gui.getSize();
+			if ( guiSize.width > windowLoc.x )
+			{
+				if ( guiSize.width > screenWidth - ( windowLoc.x + windowSize.width ) )
+				{
+					gui.setLocationRelativeTo( null ); // give up
+				}
+				else
+				{
+					// put it to the right
+					gui.setLocation( windowLoc.x + windowSize.width, windowLoc.y );
+				}
+			}
+			else
+			{
+				// put it to the left
+				gui.setLocation( windowLoc.x - guiSize.width, windowLoc.y );
+			}
+
+		}
+		else
+		{
+			gui.setLocationRelativeTo( null );
 		}
 	}
 }
