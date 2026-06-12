@@ -81,6 +81,8 @@ public class Prefs
 			else if ( Enum.class.isAssignableFrom( valClass ) )
 			{
 				final String str = prefs.get( config.getClass(), k );
+				if ( str == null )
+					return; // no value saved for this parameter, skip it
 				try
 				{
 					@SuppressWarnings( { "unchecked", "rawtypes" } )
