@@ -9,12 +9,12 @@
 		<relativePath />
 	</parent>
 
-	<artifactId>ParamGUI</artifactId>
+	<artifactId>config-ui</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 
-	<name>ParamGUI</name>
+	<name>Config-UI</name>
 	<description>A Java library to facilitate building user-interfaces configuring algorithms.</description>
-	<url>https://github.com/tinevez/ParamGUI</url>
+	<url>https://github.com/tinevez/config-ui</url>
 	<inceptionYear>2026</inceptionYear>
 	<organization>
 		<name>Institut Pasteur</name>
@@ -59,23 +59,23 @@
 	</mailingLists>
 
 	<scm>
-		<connection>scm:git:https://github.com/tinevez/ParamGUI</connection>
-		<developerConnection>scm:git:git@github.com:tinevez/ParamGUI</developerConnection>
+		<connection>scm:git:https://github.com/tinevez/config-ui</connection>
+		<developerConnection>scm:git:git@github.com:tinevez/config-ui</developerConnection>
 		<tag>HEAD</tag>
-		<url>https://github.com/tinevez/ParamGUI</url>
+		<url>https://github.com/tinevez/config-ui</url>
 	</scm>
 	<issueManagement>
 		<system>GitHub Issues</system>
-		<url>https://github.com/tinevez/ParamGUI/issues</url>
+		<url>https://github.com/tinevez/config-ui/issues</url>
 	</issueManagement>
 	<ciManagement>
 		<system>GitHub Actions</system>
-		<url>https://github.com/tinevez/ParamGUI/actions</url>
+		<url>https://github.com/tinevez/config-ui/actions</url>
 	</ciManagement>
 
 	<properties>
-		<package-name>org.scijava.ui.paramUI</package-name>
-		<main-class>org.scijava.ui.paramUI.Param</main-class>
+		<package-name>org.scijava.ui.config</package-name>
+		<main-class>org.scijava.ui.config.Configurator</main-class>
 		<license.licenseName>bsd_3</license.licenseName>
 		<license.copyrightOwners>Institut Pasteur</license.copyrightOwners>
 
