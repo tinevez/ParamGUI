@@ -188,7 +188,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 			final Set< Parameter< ?, ? > > toRemove = new HashSet<>();
 			for ( final Parameter< ?, ? > arg : params )
 			{
-				if ( !params.contains( arg ) )
+				if ( !this.params.contains( arg ) )
 					continue; // Unknown of this selectable, keep it.
 
 				if ( arg.equals( getSelection() ) )
