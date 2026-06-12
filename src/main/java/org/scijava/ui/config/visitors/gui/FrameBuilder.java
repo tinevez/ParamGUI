@@ -310,16 +310,13 @@ public final class FrameBuilder< C extends Configurator >
 				frame.btnPreview.setEnabled( false );
 			}
 
-			// In previewer() action listener — we ARE on the EDT here
+			// EDT cycle 1
 			frame.progressBar.setIndeterminate( false );
 			frame.progressBar.setValue( frame.progressBar.getMaximum() );
 			frame.progressBar.paintImmediately( frame.progressBar.getBounds() );
 
-			// Defer setIndeterminate(true) to NEXT EDT cycle so native renders value=max first
-			SwingUtilities.invokeLater( () -> {
-				frame.progressBar.setIndeterminate( true );
-				frame.progressBar.setString( "Preview…" );
-			} );
+			// EDT cycle 2.
+			SwingUtilities.invokeLater( () -> frame.progressBar.setIndeterminate( true ) );
 
 			final Thread t = new Thread( () -> {
 				try
