@@ -45,11 +45,20 @@ public class Strings
 		final StringBuilder out = new StringBuilder();
 		final ConfiguratorIterator it = config.iterator();
 
+		final IdentityHashMap< Parameter< ?, ? >, Boolean > selectableState = new IdentityHashMap<>();
+		config.getSelectables().forEach( sel -> {
+			final Parameter< ?, ? > selected = sel.getSelection();
+			sel.getParameters().forEach( opt -> {
+				selectableState.put( opt, Boolean.valueOf( opt == selected ) );
+			} );
+		} );
+
 		out.append( config.getName() != null ? config.getName() + ":\n" : config.getClass().getSimpleName() + ":\n" );
 		while ( it.hasNext() )
 		{
 			final Parameter< ?, ? > p = it.next();
-			out.append( " - " + p.getName() ).append( "=" ).append( formatValue( p.getValue() ) ).append( "\n" );
+			out.append( selectableState.containsKey( p ) ? ( Boolean.TRUE.equals( selectableState.get( p ) ) ? "[x] " : "[ ] " ) : "" )
+					.append( p.getName() ).append( "=" ).append( formatValue( p.getValue() ) ).append( "\n" );
 		}
 
 		return out.toString();
