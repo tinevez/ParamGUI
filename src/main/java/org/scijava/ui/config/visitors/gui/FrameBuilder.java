@@ -8,7 +8,6 @@ import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionListener;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
@@ -28,11 +27,11 @@ import javax.swing.UIManager;
 
 import org.scijava.Cancelable;
 import org.scijava.command.Previewable;
-import org.scijava.prefs.DefaultPrefService;
 import org.scijava.ui.config.Configurator;
 import org.scijava.ui.config.utils.EverythingDisablerAndReenabler;
 import org.scijava.ui.config.utils.Icons;
 import org.scijava.ui.config.visitors.Maps;
+import org.scijava.ui.config.visitors.Prefs;
 import org.scijava.ui.config.visitors.Strings;
 import org.scijava.ui.config.visitors.gui.GuiBuilder.ConfigPanel;
 
@@ -632,75 +631,12 @@ public final class FrameBuilder< C extends Configurator >
 
 	private static < C extends Configurator > void defaultStore( final C config )
 	{
-		final DefaultPrefService prefs = new DefaultPrefService();
-		Maps.toMap( config ).forEach( ( k, v ) -> {
-			final Class< ? extends Object > valClass = v.getClass();
-			if ( Double.class.isAssignableFrom( valClass ) || Float.class.isAssignableFrom( valClass ) )
-			{
-				prefs.put( config.getClass(), k, ( ( Number ) v ).doubleValue() );
-			}
-			else if ( Integer.class.isAssignableFrom( valClass ) )
-			{
-				prefs.put( config.getClass(), k, ( ( Number ) v ).intValue() );
-			}
-			else if ( Boolean.class.isAssignableFrom( valClass ) )
-			{
-				prefs.put( config.getClass(), k, ( Boolean ) v );
-			}
-			else if ( String.class.isAssignableFrom( valClass ) )
-			{
-				prefs.put( config.getClass(), k, ( String ) v );
-			}
-			else if ( Enum.class.isAssignableFrom( valClass ) )
-			{
-				prefs.put( config.getClass(), k, ( ( Enum< ? > ) v ).name() );
-			}
-		} );
+		Prefs.serialize( config );
 	}
 
 	private static < C extends Configurator > void defaultReload( final C config, final Runnable refresh )
 	{
-		final DefaultPrefService prefs = new DefaultPrefService();
-		final Map< String, Object > map = new HashMap<>();
-		Maps.toMap( config ).forEach( ( k, v ) -> {
-			final Class< ? extends Object > valClass = v.getClass();
-			if ( Double.class.isAssignableFrom( valClass ) || Float.class.isAssignableFrom( valClass ) )
-			{
-				map.put( k, prefs.getDouble( config.getClass(), k, ( ( Number ) v ).doubleValue() ) );
-			}
-			else if ( Integer.class.isAssignableFrom( valClass ) )
-			{
-				map.put( k, prefs.getInt( config.getClass(), k, ( ( Number ) v ).intValue() ) );
-			}
-			else if ( Boolean.class.isAssignableFrom( valClass ) )
-			{
-				map.put( k, prefs.getBoolean( config.getClass(), k, ( Boolean ) v ) );
-			}
-			else if ( String.class.isAssignableFrom( valClass ) )
-			{
-				map.put( k, prefs.get( config.getClass(), k, ( String ) v ) );
-			}
-			else if ( Enum.class.isAssignableFrom( valClass ) )
-			{
-				final String str = prefs.get( config.getClass(), k );
-				try
-				{
-					@SuppressWarnings( { "unchecked", "rawtypes" } )
-					final Object enumVal = Enum.valueOf( ( Class< ? extends Enum > ) valClass, str );
-					map.put( k, enumVal );
-				}
-				catch ( final IllegalArgumentException exc )
-				{
-					System.err.println( "Couldn't parse enum value " + str + " for parameter " + k + " of type " + valClass.getName() );
-					exc.printStackTrace();
-				}
-			}
-			else
-			{
-				System.err.println( "Don't know how to reload parameter " + k + " of type " + valClass.getName() );
-			}
-		} );
-		Maps.fromMap( map, config );
+		Prefs.deserialize( config );
 		refresh.run();
 	}
 }
