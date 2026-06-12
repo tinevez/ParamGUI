@@ -1,6 +1,5 @@
 package org.scijava.ui.config;
 
-import org.scijava.ui.config.Configurator;
 import org.scijava.ui.config.Parameters.IntParam;
 import org.scijava.ui.config.visitors.gui.FrameBuilder;
 import org.scijava.ui.config.visitors.gui.FrameBuilder.UserTask;
