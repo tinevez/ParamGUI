@@ -34,6 +34,28 @@ public class Strings
 	private static final String SEPARATOR = " " + V + " ";
 
 	/**
+	 * Print the configuration as a simple list of name=value pairs, one per
+	 * line.
+	 * 
+	 * @param config
+	 * @return a string representation of the configuration.
+	 */
+	public static String toString( final Configurator config )
+	{
+		final StringBuilder out = new StringBuilder();
+		final ConfiguratorIterator it = config.iterator();
+
+		out.append( config.getName() != null ? config.getName() + ":\n" : config.getClass().getSimpleName() + ":\n" );
+		while ( it.hasNext() )
+		{
+			final Parameter< ?, ? > p = it.next();
+			out.append( " - " + p.getName() ).append( "=" ).append( formatValue( p.getValue() ) ).append( "\n" );
+		}
+
+		return out.toString();
+	}
+
+	/**
 	 * Pretty-print the configuration as a table.
 	 *
 	 * @param config
