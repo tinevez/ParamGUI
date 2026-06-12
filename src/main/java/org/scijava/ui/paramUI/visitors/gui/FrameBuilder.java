@@ -5,7 +5,6 @@ import static org.scijava.ui.paramUI.utils.GuiUtils.openInBrowser;
 
 import java.awt.BorderLayout;
 import java.awt.CardLayout;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.GridLayout;
 import java.awt.event.ActionListener;
@@ -97,7 +96,6 @@ public final class FrameBuilder< C extends Configurator >
 		frame.progressBar.setMinimumSize( new Dimension( 10, desiredHeight ) );
 
 		frame.progressBar.setBorder( BorderFactory.createEmptyBorder( 4, 8, 8, 8 ) );
-		frame.defaultProgressForeground = frame.progressBar.getForeground();
 		south.add( frame.progressBar, BorderLayout.CENTER );
 
 		frame.add( south, BorderLayout.PAGE_END );
@@ -312,16 +310,17 @@ public final class FrameBuilder< C extends Configurator >
 				frame.btnPreview.setEnabled( false );
 			}
 
-			SwingUtilities.invokeLater( () -> {
-				frame.progressBar.setIndeterminate( true );
-				frame.progressBar.setForeground( frame.defaultProgressForeground );
-				frame.progressBar.setString( "Preview…" );
-			} );
+			frame.progressBar.setIndeterminate( false );
+			frame.progressBar.setValue( frame.progressBar.getMaximum() );
+			frame.progressBar.setIndeterminate( true );
+			frame.progressBar.setString( "Preview…" );
 
 			final Thread t = new Thread( () -> {
 				try
 				{
+					// No invokeLater block here anymore — already set above
 					previewable.preview();
+
 					SwingUtilities.invokeLater( () -> {
 						frame.progressBar.setIndeterminate( false );
 						frame.progressBar.setString( "Preview done" );
@@ -456,8 +455,6 @@ public final class FrameBuilder< C extends Configurator >
 
 			void message( String text );
 
-			void message( String text, Color color );
-
 			void clear();
 
 			boolean isCanceled();
@@ -478,8 +475,6 @@ public final class FrameBuilder< C extends Configurator >
 		public JButton btnPreview;
 
 		public JProgressBar progressBar;
-
-		public Color defaultProgressForeground;
 
 		private final AtomicBoolean canceled = new AtomicBoolean( false );
 
@@ -512,12 +507,6 @@ public final class FrameBuilder< C extends Configurator >
 			public void message( final String t )
 			{
 				setStatusMessage( t );
-			}
-
-			@Override
-			public void message( final String t, final Color c )
-			{
-				setStatusMessage( t, c );
 			}
 
 			@Override
@@ -587,24 +576,13 @@ public final class FrameBuilder< C extends Configurator >
 				progressBar.setIndeterminate( false );
 				progressBar.setValue( 0 );
 				progressBar.setString( null );
-				if ( defaultProgressForeground != null )
-					progressBar.setForeground( defaultProgressForeground );
 			} );
 		}
 
 		public void setStatusMessage( final String message )
 		{
-			setStatusMessage( message, null );
-		}
-
-		public void setStatusMessage( final String message, final Color color )
-		{
 			SwingUtilities.invokeLater( () -> {
 				progressBar.setString( message == null ? null : message );
-				if ( color != null )
-					progressBar.setForeground( color );
-				else if ( defaultProgressForeground != null )
-					progressBar.setForeground( defaultProgressForeground );
 			} );
 		}
 	}

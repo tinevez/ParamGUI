@@ -1,6 +1,5 @@
 package org.scijava.ui.paramUI;
 
-import java.awt.Color;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -263,7 +262,7 @@ public class Demo
 			{
 				if ( isCanceled() )
 				{
-					p.message( "Canceled:" + getCancelReason(), Color.ORANGE );
+					p.message( "Canceled:" + getCancelReason() );
 					return;
 				}
 				Thread.sleep( 100 );
