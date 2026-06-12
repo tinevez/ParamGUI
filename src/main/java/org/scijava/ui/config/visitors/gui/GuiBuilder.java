@@ -63,10 +63,10 @@ import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
 
 import org.scijava.ui.config.Configurator;
+import org.scijava.ui.config.Configurator.SelectableParameters;
 import org.scijava.ui.config.ConfiguratorIterator;
 import org.scijava.ui.config.ParameterVisitor;
 import org.scijava.ui.config.Parameters;
-import org.scijava.ui.config.Configurator.SelectableParameters;
 import org.scijava.ui.config.Parameters.BooleanParam;
 import org.scijava.ui.config.Parameters.ChoiceParam;
 import org.scijava.ui.config.Parameters.DoubleParam;
@@ -737,50 +737,6 @@ public class GuiBuilder implements ParameterVisitor
 			comp.setToolTipText( help );
 			lblUnits.setToolTipText( help );
 		}
-	}
-
-	private void addToLayout( final String help, final JComponent comp )
-	{
-		final JPanel target = inGroup ? groupBody : panel;
-		final GridBagConstraints CC = inGroup ? gc : c;
-
-		final JComponent header;
-		if ( panel.rdbtn != null )
-		{
-			final JRadioButton btn = panel.rdbtn;
-			btn.addItemListener( e -> comp.setEnabled( btn.isSelected() ) );
-			header = new JPanel();
-			header.setLayout( new BoxLayout( header, BoxLayout.LINE_AXIS ) );
-			header.add( btn );
-			header.add( Box.createHorizontalGlue() );
-			header.add( comp );
-		}
-		else
-		{
-			header = comp;
-		}
-
-		// Full-width content across columns 0-2
-		CC.gridx = 0;
-		CC.gridwidth = 3;
-		CC.fill = GridBagConstraints.HORIZONTAL;
-		CC.insets = new Insets( topInset, 0, bottomInset, 0 );
-		target.add( header, CC );
-
-		// Help icon at column 3 on the same row
-		final JComponent helpCell = buildHelpCell( help );
-		CC.gridx = 3;
-		CC.gridwidth = 1;
-		CC.fill = GridBagConstraints.NONE;
-		CC.anchor = GridBagConstraints.LINE_END;
-		target.add( helpCell, CC );
-
-		// Advance
-		CC.gridx = 0;
-		CC.gridy++;
-
-		if ( help != null )
-			comp.setToolTipText( help );
 	}
 
 	private void addLastRow()
