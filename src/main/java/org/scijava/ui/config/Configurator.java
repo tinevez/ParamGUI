@@ -774,7 +774,7 @@ public abstract class Configurator implements Iterable< Parameter< ?, ? > >
 	 *
 	 * @return a new flag parameter builder.
 	 */
-	protected BooleanAdder addFlag()
+	protected BooleanAdder addBooleanParameter()
 	{
 		return new BooleanAdder();
 	}
