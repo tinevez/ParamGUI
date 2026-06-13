@@ -278,6 +278,8 @@ public class Parameters
 		@Override
 		public String getValue()
 		{
+			if ( selected < 0 )
+				return getDefaultValue();
 			return choices.get( selected );
 		}
 
